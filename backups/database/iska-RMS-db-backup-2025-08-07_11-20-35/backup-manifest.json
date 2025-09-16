@@ -1,0 +1,22 @@
+{
+  "projectName": "iska-RMS",
+  "backupTimestamp": "2025-08-07_11-20-35",
+  "backupLocation": "backups\\database\\iska-RMS-db-backup-2025-08-07_11-20-35",
+  "databaseInfo": {
+    "url": "https://vwgczfdedacpymnxzxcp.supabase.co",
+    "backupDate": "2025-08-07T07:20:36.752Z",
+    "totalTables": 0,
+    "totalRecords": 0
+  },
+  "backupSummary": {
+    "tables": [],
+    "rlsPolicies": 0,
+    "functions": 0,
+    "triggers": 0
+  },
+  "systemInfo": {
+    "nodeVersion": "v22.17.0",
+    "platform": "win32",
+    "arch": "x64"
+  }
+}

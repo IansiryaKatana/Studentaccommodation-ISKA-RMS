@@ -1,0 +1,16 @@
+# Cursor ignore file - allows access to files ignored by git
+# This file tells Cursor which files to ignore, separate from .gitignore
+
+# Keep these ignored by Cursor
+node_modules/
+dist/
+*.log
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Note: .env files are NOT ignored here, so Cursor can access them
+# even though they're in .gitignore

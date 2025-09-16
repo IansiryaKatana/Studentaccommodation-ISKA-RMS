@@ -1,0 +1,67 @@
+[
+  {
+    "id": "30125fcb-5273-4f65-964f-4d6f189eac48",
+    "name": "10 Installments",
+    "description": "Pay in 10 installments for student accommodation",
+    "number_of_installments": 10,
+    "discount_percentage": 0,
+    "late_fee_percentage": 5,
+    "late_fee_flat": 25,
+    "is_active": true,
+    "created_at": "2025-08-06T12:38:21.222826+00:00",
+    "late_fee_enabled": false,
+    "late_fee_days": 7,
+    "due_dates": [
+      "2025-08-16",
+      "2025-10-01",
+      "2025-11-01",
+      "2025-12-01",
+      "2026-01-01",
+      "2026-02-01",
+      "2026-03-01",
+      "2026-04-01",
+      "2026-05-01",
+      "2026-06-01"
+    ],
+    "deposit_amount": 99
+  },
+  {
+    "id": "c15a1f7c-d62f-4d37-a257-14e468c26913",
+    "name": "3 Installments",
+    "description": "Pay in 3 installments for student accommodation",
+    "number_of_installments": 3,
+    "discount_percentage": 0,
+    "late_fee_percentage": 0,
+    "late_fee_flat": 0,
+    "is_active": true,
+    "created_at": "2025-08-06T12:38:20.612722+00:00",
+    "late_fee_enabled": false,
+    "late_fee_days": 7,
+    "due_dates": [
+      "2025-08-16",
+      "2026-01-01",
+      "2026-04-01"
+    ],
+    "deposit_amount": 98.61
+  },
+  {
+    "id": "dbc315cc-54ea-477b-b0d4-f35063fe7a6a",
+    "name": "4 Installments",
+    "description": "Pay in 4 installments for student accommodation",
+    "number_of_installments": 4,
+    "discount_percentage": 0,
+    "late_fee_percentage": 0,
+    "late_fee_flat": 0,
+    "is_active": true,
+    "created_at": "2025-08-06T12:38:21.054856+00:00",
+    "late_fee_enabled": false,
+    "late_fee_days": 7,
+    "due_dates": [
+      "2025-08-16",
+      "2025-11-01",
+      "2026-02-01",
+      "2026-05-01"
+    ],
+    "deposit_amount": 99
+  }
+]

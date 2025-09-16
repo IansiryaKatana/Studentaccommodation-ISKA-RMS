@@ -1,0 +1,12 @@
+{
+  "projectName": "iska-RMS",
+  "backupTimestamp": "2025-07-08_11-20-26",
+  "backupLocation": ".\backups\iska-RMS-complete-backup-2025-07-08_11-20-26.zip",
+  "backupDate": "07/08/2025 11:20:47.46",
+  "codebaseBackup": "true",
+  "databaseBackup": "true",
+  "systemInfo": {
+    "os": "Windows",
+    "backupScript": "final-backup.bat"
+  }
+}

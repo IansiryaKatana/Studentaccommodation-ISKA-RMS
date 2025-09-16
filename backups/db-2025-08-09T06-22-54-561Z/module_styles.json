@@ -1,0 +1,90 @@
+[
+  {
+    "id": "8e7bb687-4ee1-4836-9a04-4e497d6bc8e4",
+    "module_name": "leads",
+    "gradient_start": "#667eea",
+    "gradient_end": "#764ba2",
+    "is_active": true,
+    "created_at": "2025-08-02T20:59:28.423587+00:00"
+  },
+  {
+    "id": "0f650624-0068-4f87-b4cd-a0334f8a66d4",
+    "module_name": "reservations",
+    "gradient_start": "#f093fb",
+    "gradient_end": "#f5576c",
+    "is_active": true,
+    "created_at": "2025-08-02T20:59:28.423587+00:00"
+  },
+  {
+    "id": "1b8acc11-0b67-4404-bc6d-724536a2de12",
+    "module_name": "students",
+    "gradient_start": "#4facfe",
+    "gradient_end": "#00f2fe",
+    "is_active": true,
+    "created_at": "2025-08-02T20:59:28.423587+00:00"
+  },
+  {
+    "id": "5c485b4f-4fd5-4cc2-a5eb-1b017c4f9060",
+    "module_name": "cleaning",
+    "gradient_start": "#43e97b",
+    "gradient_end": "#38f9d7",
+    "is_active": true,
+    "created_at": "2025-08-02T20:59:28.423587+00:00"
+  },
+  {
+    "id": "19e48115-49ab-4726-bd3f-f8f87659b94c",
+    "module_name": "finance",
+    "gradient_start": "#fa709a",
+    "gradient_end": "#fee140",
+    "is_active": true,
+    "created_at": "2025-08-02T20:59:28.423587+00:00"
+  },
+  {
+    "id": "31b752f8-d57b-4872-8143-f465883472fd",
+    "module_name": "dashboard",
+    "gradient_start": "#3B82F6",
+    "gradient_end": "#8B5CF6",
+    "is_active": true,
+    "created_at": "2025-08-03T07:08:45.664695+00:00"
+  },
+  {
+    "id": "6ac89bd3-9e50-46fa-8df4-d9f1614a5b63",
+    "module_name": "settings",
+    "gradient_start": "#ff9500",
+    "gradient_end": "#e6b400",
+    "is_active": true,
+    "created_at": "2025-08-02T20:59:28.423587+00:00"
+  },
+  {
+    "id": "8c118df3-1bfe-4f2a-b7c4-811142530ba0",
+    "module_name": "data",
+    "gradient_start": "#25a7a1",
+    "gradient_end": "#df0c4f",
+    "is_active": true,
+    "created_at": "2025-08-02T20:59:28.423587+00:00"
+  },
+  {
+    "id": "aa5d8ab3-00e1-4f29-9fc3-2c61669c9c22",
+    "module_name": "studios",
+    "gradient_start": "#8B5CF6",
+    "gradient_end": "#7C3AED",
+    "is_active": true,
+    "created_at": "2025-08-08T12:55:49.929856+00:00"
+  },
+  {
+    "id": "c798995e-ca52-4723-b84d-a17791d21997",
+    "module_name": "web-access",
+    "gradient_start": "#06B6D4",
+    "gradient_end": "#0891B2",
+    "is_active": true,
+    "created_at": "2025-08-08T12:55:50.178586+00:00"
+  },
+  {
+    "id": "634a4839-a25d-46fb-99dc-5ebc9a86957e",
+    "module_name": "branding",
+    "gradient_start": "#8b5cf6",
+    "gradient_end": "#7c3aed",
+    "is_active": true,
+    "created_at": "2025-08-08T19:23:51.679865+00:00"
+  }
+]
