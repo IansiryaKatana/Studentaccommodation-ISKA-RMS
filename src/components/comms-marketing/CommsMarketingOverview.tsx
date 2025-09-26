@@ -11,7 +11,9 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  Loader2
+  Loader2,
+  Send,
+  Bell
 } from 'lucide-react';
 import { ApiService } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
@@ -178,13 +180,53 @@ const CommsMarketingOverview = () => {
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button className="w-full justify-start" variant="outline">
+            <Button 
+              className="w-full justify-start" 
+              variant="outline"
+              onClick={() => navigate('/comms-marketing/email-templates')}
+            >
               <Mail className="h-4 w-4 mr-2" />
-              Send Bulk Email
+              Email Templates
             </Button>
-            <Button className="w-full justify-start" variant="outline">
+            <Button 
+              className="w-full justify-start" 
+              variant="outline"
+              onClick={() => navigate('/comms-marketing/student-segmentation')}
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Student Segmentation
+            </Button>
+            <Button 
+              className="w-full justify-start" 
+              variant="outline"
+              onClick={() => navigate('/comms-marketing/bulk-email-sender')}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Bulk Email Sender
+            </Button>
+            <Button 
+              className="w-full justify-start" 
+              variant="outline"
+              onClick={() => navigate('/comms-marketing/automated-reminders')}
+            >
+              <Bell className="h-4 w-4 mr-2" />
+              Automated Reminders
+            </Button>
+            <Button 
+              className="w-full justify-start" 
+              variant="outline"
+              onClick={() => navigate('/comms-marketing/email-analytics')}
+            >
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Email Analytics
+            </Button>
+            <Button 
+              className="w-full justify-start" 
+              variant="outline"
+              onClick={() => navigate('/comms-marketing/maintenance-requests')}
+            >
               <MessageSquare className="h-4 w-4 mr-2" />
-              View Maintenance Requests
+              Maintenance Requests
             </Button>
             <Button 
               className="w-full justify-start" 
@@ -192,7 +234,7 @@ const CommsMarketingOverview = () => {
               onClick={() => navigate('/comms-marketing/analytics')}
             >
               <TrendingUp className="h-4 w-4 mr-2" />
-              Marketing Analytics
+              Student Analytics
             </Button>
           </CardContent>
         </Card>

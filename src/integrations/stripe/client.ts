@@ -13,6 +13,12 @@ export const initializeStripe = async () => {
     
     // Check if we have a valid publishable key
     if (keys.publishable_key && keys.publishable_key !== 'pk_test_your_publishable_key_here') {
+      // Suppress HTTPS warning in development
+      const isDevelopment = import.meta.env.DEV || window.location.protocol === 'http:';
+      if (isDevelopment) {
+        console.log('🔒 Stripe initialized in development mode (HTTP is allowed for testing)');
+      }
+      
       stripePromise = loadStripe(keys.publishable_key);
       return stripePromise;
     } else {
@@ -23,6 +29,12 @@ export const initializeStripe = async () => {
     // Fallback to environment variable or test key
     const fallbackKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_your_publishable_key_here';
     if (fallbackKey && fallbackKey !== 'pk_test_your_publishable_key_here') {
+      // Suppress HTTPS warning in development
+      const isDevelopment = import.meta.env.DEV || window.location.protocol === 'http:';
+      if (isDevelopment) {
+        console.log('🔒 Stripe initialized in development mode (HTTP is allowed for testing)');
+      }
+      
       stripePromise = loadStripe(fallbackKey);
     } else {
       console.warn('No valid Stripe publishable key found. Please configure your keys in Settings > Config Management');

@@ -14,6 +14,7 @@ import ConfigManagement from '@/components/settings/ConfigManagement';
 import StudentAccounts from '@/components/settings/StudentAccounts';
 import ModuleAccessConfig from '@/components/settings/ModuleAccessConfig';
 import BulkUploadStudents from '@/components/settings/BulkUploadStudents';
+import LeadsSettings from '@/components/settings/LeadsSettings';
 
 const SettingsModule = () => {
   return (
@@ -31,6 +32,7 @@ const SettingsModule = () => {
       <Route path="/config" element={<ConfigManagement />} />
       <Route path="/module-access" element={<ModuleAccessConfig />} />
       <Route path="/bulk-upload-students" element={<BulkUploadStudents />} />
+      <Route path="/leads" element={<LeadsSettings />} />
     </Routes>
   );
 };

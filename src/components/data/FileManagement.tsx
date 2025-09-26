@@ -19,7 +19,7 @@ const FileManagement: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [stats, setStats] = useState({ total_files: 0, total_size: 0, files_by_category: {} });
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedFile, setSelectedFile] = useState<FileRecord | null>(null);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [showFileDialog, setShowFileDialog] = useState(false);
@@ -40,7 +40,7 @@ const FileManagement: React.FC = () => {
       setLoading(true);
       const filters: any = {};
       if (searchTerm) filters.search = searchTerm;
-      if (categoryFilter) filters.category = categoryFilter;
+      if (categoryFilter && categoryFilter !== 'all') filters.category = categoryFilter;
       
       const fileList = await FileStorageService.listFiles(filters);
       setFiles(fileList);
@@ -302,7 +302,7 @@ const FileManagement: React.FC = () => {
                   <SelectValue placeholder="All categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All categories</SelectItem>
+                  <SelectItem value="all">All categories</SelectItem>
                   <SelectItem value="invoice">Invoice</SelectItem>
                   <SelectItem value="contract">Contract</SelectItem>
                   <SelectItem value="id_document">ID Document</SelectItem>

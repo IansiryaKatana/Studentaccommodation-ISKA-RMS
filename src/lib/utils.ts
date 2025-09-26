@@ -53,3 +53,28 @@ export async function retryWithBackoff<T>(
   
   throw lastError!;
 }
+
+/**
+ * Format a number as currency
+ */
+export function formatCurrency(amount: number | undefined | null): string {
+  if (amount === undefined || amount === null || isNaN(amount)) {
+    return '$0.00';
+  }
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(amount);
+}
+
+/**
+ * Format a date string
+ */
+export function formatDate(dateString: string | undefined | null): string {
+  if (!dateString) return 'N/A';
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WordPress Webhook Handler</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .info { color: #17a2b8; }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WordPress Webhook Handler</h1>
+        <p>This page handles WordPress form submissions and creates leads in ISKA RMS.</p>
+        
+        <div id="status"></div>
+        <div id="result"></div>
+        
+        <h2>Test the Webhook</h2>
+        <form id="testForm">
+            <div style="margin-bottom: 15px;">
+                <label>First Name: <input type="text" name="first_name" required></label>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>Last Name: <input type="text" name="last_name" required></label>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>Email: <input type="email" name="email"></label>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>Phone: <input type="tel" name="phone"></label>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>Message: <textarea name="message" rows="3"></textarea></label>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>Room Grade: <input type="text" name="room_grade"></label>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>Duration: <input type="text" name="duration"></label>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label>Budget: <input type="number" name="budget"></label>
+            </div>
+            <button type="submit">Test Webhook</button>
+        </form>
+    </div>
+
+    <script>
+        // Supabase configuration
+        const SUPABASE_URL = 'https://vwgczfdedacpymnxzxcp.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ3Z2N6ZmRlZGFjcHltbnh6eGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQxMTYzMzksImV4cCI6MjA2OTY5MjMzOX0.-Be0-yqpi5dYGlZF7-5hDWasoyqXzI3VpFlhdnNB7ew';
+
+        // UUID validation function
+        function isValidUUID(uuid) {
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+            return uuidRegex.test(uuid);
+        }
+
+        // Handle form submission
+        document.getElementById('testForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            
+            document.getElementById('status').innerHTML = '<p class="info">Processing...</p>';
+            
+            try {
+                const result = await processWebhook(data);
+                document.getElementById('status').innerHTML = '<p class="success">✅ Lead created successfully!</p>';
+                document.getElementById('result').innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+            } catch (error) {
+                document.getElementById('status').innerHTML = '<p class="error">❌ Error creating lead</p>';
+                document.getElementById('result').innerHTML = `<pre>${error.message}</pre>`;
+            }
+        });
+
+        // Process webhook data
+        async function processWebhook(formData) {
+            // Validate required fields
+            if (!formData.first_name || !formData.last_name) {
+                throw new Error('First name and last name are required');
+            }
+
+            // Map text values to UUIDs (if needed)
+            let roomGradeId = formData.room_grade;
+            let durationId = formData.duration;
+            
+            // If the values are text (not UUIDs), we'll need to look them up
+            // For now, let's just skip these fields if they're not valid UUIDs
+            if (roomGradeId && !isValidUUID(roomGradeId)) {
+                console.log('Room grade is not a valid UUID, skipping:', roomGradeId);
+                roomGradeId = undefined;
+            }
+            
+            if (durationId && !isValidUUID(durationId)) {
+                console.log('Duration is not a valid UUID, skipping:', durationId);
+                durationId = undefined;
+            }
+
+            // Get default user from settings (if available)
+            let assignedUserId = null;
+            try {
+                const settings = localStorage.getItem('leadSettings');
+                if (settings) {
+                    const parsedSettings = JSON.parse(settings);
+                    if (parsedSettings.auto_assign_website_leads && parsedSettings.default_website_lead_user_id) {
+                        assignedUserId = parsedSettings.default_website_lead_user_id;
+                    }
+                }
+            } catch (error) {
+                console.log('Could not load lead settings:', error);
+            }
+
+            // Create lead data
+            const leadData = {
+                first_name: formData.first_name || '',
+                last_name: formData.last_name || '',
+                email: formData.email || undefined,
+                phone: formData.phone || undefined,
+                source_id: '770e8400-e29b-41d4-a716-446655440001', // Websites source ID
+                status: 'new',
+                notes: formData.message || undefined,
+                room_grade_preference_id: roomGradeId,
+                duration_type_preference_id: durationId,
+                budget: formData.budget ? parseFloat(formData.budget) : undefined,
+                estimated_revenue: formData.budget ? parseFloat(formData.budget) : undefined,
+                assigned_to: assignedUserId // Assign to default user if configured
+            };
+
+            // Remove undefined values
+            Object.keys(leadData).forEach(key => {
+                if (leadData[key] === undefined) {
+                    delete leadData[key];
+                }
+            });
+
+            // Insert into Supabase
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/leads`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify(leadData)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Supabase error: ${errorText}`);
+            }
+
+            const result = await response.json();
+            return result[0];
+        }
+
+        // Handle POST requests (for actual webhook calls)
+        if (window.location.search.includes('webhook=true')) {
+            // This would be called by WordPress
+            const urlParams = new URLSearchParams(window.location.search);
+            const formData = Object.fromEntries(urlParams.entries());
+            
+            console.log('Webhook called with data:', formData);
+            
+            processWebhook(formData)
+                .then(result => {
+                    document.getElementById('status').innerHTML = '<p class="success">✅ Lead created successfully!</p>';
+                    document.getElementById('result').innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+                    console.log('Lead created successfully:', result);
+                })
+                .catch(error => {
+                    document.getElementById('status').innerHTML = '<p class="error">❌ Error creating lead</p>';
+                    document.getElementById('result').innerHTML = `<pre>${error.message}</pre>`;
+                    console.error('Error creating lead:', error);
+                });
+        }
+
+        // Also handle direct POST requests (when Elementor sends JSON data)
+        // This is a more robust way to handle webhook calls
+        if (window.location.pathname.includes('wordpress-webhook')) {
+            // Check if this is a POST request with JSON data
+            const handlePostRequest = async () => {
+                try {
+                    // Get form data from URL parameters or from a hidden form
+                    const urlParams = new URLSearchParams(window.location.search);
+                    let formData = Object.fromEntries(urlParams.entries());
+                    
+                    // If no URL params, try to get from a form submission
+                    if (Object.keys(formData).length === 0) {
+                        // This might be a POST request, but we can't access the body directly
+                        // So we'll show a message to check the console
+                        document.getElementById('status').innerHTML = '<p class="info">ℹ️ Webhook received. Check browser console for details.</p>';
+                        console.log('Webhook endpoint accessed. If this is a POST request, the data should be processed.');
+                        return;
+                    }
+                    
+                    console.log('Processing webhook data:', formData);
+                    
+                    const result = await processWebhook(formData);
+                    document.getElementById('status').innerHTML = '<p class="success">✅ Lead created successfully!</p>';
+                    document.getElementById('result').innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+                    console.log('Lead created successfully:', result);
+                } catch (error) {
+                    document.getElementById('status').innerHTML = '<p class="error">❌ Error creating lead</p>';
+                    document.getElementById('result').innerHTML = `<pre>${error.message}</pre>`;
+                    console.error('Error creating lead:', error);
+                }
+            };
+            
+            handlePostRequest();
+        }
+    </script>
+</body>
+</html>

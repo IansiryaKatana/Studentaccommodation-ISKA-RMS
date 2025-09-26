@@ -59,9 +59,26 @@ export interface Lead {
   duration_months?: number;
   notes?: string;
   assigned_to?: string;
+  room_grade_preference_id?: string;
+  duration_type_preference_id?: string;
+  estimated_revenue?: number;
   created_by: string;
   created_at: string;
   updated_at: string;
+  // Related data (populated by joins)
+  lead_source?: {
+    name: string;
+  };
+  assigned_user?: {
+    first_name: string;
+    last_name: string;
+  };
+  room_grade_preference?: {
+    name: string;
+  };
+  duration_type_preference?: {
+    name: string;
+  };
 }
 
 export interface RoomGrade {
@@ -75,6 +92,71 @@ export interface RoomGrade {
   features?: string[];
   is_active: boolean;
   created_at: string;
+}
+
+export interface LeadRoomGrade {
+  id: string;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeadDurationType {
+  id: string;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeadComment {
+  id: string;
+  lead_id: string;
+  author_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  // Related data
+  author?: {
+    first_name: string;
+    last_name: string;
+  };
+}
+
+export interface ViewingBooking {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email?: string;
+  phone?: string;
+  source_id?: string;
+  status: 'new' | 'scheduled' | 'completed' | 'cancelled' | 'no-show';
+  notes?: string;
+  assigned_to?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+  room_grade_preference_id?: string;
+  duration_type_preference_id?: string;
+  estimated_revenue?: number;
+  booking_datetime: string;
+  // Related data (populated by joins)
+  lead_source?: {
+    name: string;
+  };
+  assigned_user?: {
+    first_name: string;
+    last_name: string;
+  };
+  room_grade_preference?: {
+    name: string;
+  };
+  duration_type_preference?: {
+    name: string;
+  };
 }
 
 export interface Studio {
@@ -621,7 +703,13 @@ export class ApiService {
   static async getLeads(): Promise<Lead[]> {
     const { data, error } = await supabase
       .from('leads')
-      .select('*')
+      .select(`
+        *,
+        lead_source:lead_sources(name),
+        assigned_user:users!leads_assigned_to_fkey(first_name, last_name),
+        room_grade_preference:lead_room_grades(name),
+        duration_type_preference:lead_duration_types(name)
+      `)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -631,12 +719,136 @@ export class ApiService {
   static async getLeadById(id: string): Promise<Lead | null> {
     const { data, error } = await supabase
       .from('leads')
-      .select('*')
+      .select(`
+        *,
+        lead_source:lead_sources(name),
+        assigned_user:users!leads_assigned_to_fkey(first_name, last_name),
+        room_grade_preference:lead_room_grades(name),
+        duration_type_preference:lead_duration_types(name)
+      `)
       .eq('id', id)
       .single();
 
     if (error) throw error;
     return data;
+  }
+
+  // Lead Comments methods
+  static async getLeadComments(leadId: string): Promise<LeadComment[]> {
+    const { data, error } = await supabase
+      .from('lead_comments')
+      .select(`
+        *,
+        author:users!lead_comments_author_id_fkey(first_name, last_name)
+      `)
+      .eq('lead_id', leadId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async createLeadComment(leadId: string, content: string): Promise<LeadComment> {
+    // Import authService dynamically to avoid circular dependency
+    const { authService } = await import('@/services/auth');
+    const user = authService.getCurrentUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('lead_comments')
+      .insert({
+        lead_id: leadId,
+        author_id: user.id,
+        content: content
+      })
+      .select(`
+        *,
+        author:users!lead_comments_author_id_fkey(first_name, last_name)
+      `)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async updateLeadComment(commentId: string, content: string): Promise<LeadComment> {
+    const { data, error } = await supabase
+      .from('lead_comments')
+      .update({ content, updated_at: new Date().toISOString() })
+      .eq('id', commentId)
+      .select(`
+        *,
+        author:users!lead_comments_author_id_fkey(first_name, last_name)
+      `)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async deleteLeadComment(commentId: string): Promise<void> {
+    const { error } = await supabase
+      .from('lead_comments')
+      .delete()
+      .eq('id', commentId);
+
+    if (error) throw error;
+  }
+
+  // WordPress/Elementor Form Integration
+  static async createLeadFromWebhook(formData: any): Promise<Lead> {
+    try {
+      // Get the "Websites" source ID
+      const { data: sources, error: sourceError } = await supabase
+        .from('lead_sources')
+        .select('id')
+        .eq('name', 'Websites')
+        .single();
+
+      if (sourceError || !sources) {
+        throw new Error('Website source not found');
+      }
+
+      // Map Elementor form fields to ISKA RMS lead structure
+      const leadData = {
+        first_name: formData.first_name || '',
+        last_name: formData.last_name || '',
+        email: formData.email || undefined,
+        phone: formData.phone || undefined,
+        source_id: sources.id, // Auto-assign "Websites" source
+        status: 'new' as const,
+        notes: formData.message || undefined,
+        room_grade_preference_id: formData.room_grade || undefined,
+        duration_type_preference_id: formData.duration || undefined,
+      budget: formData.budget ? parseFloat(formData.budget) : undefined,
+      estimated_revenue: formData.budget ? parseFloat(formData.budget) : undefined
+      // Removed created_by field - let database use default or null
+      };
+
+      // Validate required fields
+      if (!leadData.first_name || !leadData.last_name) {
+        throw new Error('First name and last name are required');
+      }
+
+      // Create the lead
+      const { data, error } = await supabase
+        .from('leads')
+        .insert(leadData)
+        .select(`
+          *,
+          lead_source:lead_sources(name),
+          assigned_user:users!leads_assigned_to_fkey(first_name, last_name),
+          room_grade_preference:lead_room_grades(name),
+          duration_type_preference:lead_duration_types(name)
+        `)
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error creating lead from webhook:', error);
+      throw error;
+    }
   }
 
   static async createLead(leadData: Omit<Lead, 'id' | 'created_at' | 'updated_at'>): Promise<Lead> {
@@ -665,6 +877,72 @@ export class ApiService {
   static async deleteLead(id: string): Promise<void> {
     const { error } = await supabase
       .from('leads')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  // Viewing Booking methods
+  static async getViewingBookings(): Promise<ViewingBooking[]> {
+    const { data, error } = await supabase
+      .from('viewing_bookings')
+      .select(`
+        *,
+        lead_source:lead_sources(name),
+        assigned_user:users!viewing_bookings_assigned_to_fkey(first_name, last_name),
+        room_grade_preference:lead_room_grades(name),
+        duration_type_preference:lead_duration_types(name)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async getViewingBookingById(id: string): Promise<ViewingBooking | null> {
+    const { data, error } = await supabase
+      .from('viewing_bookings')
+      .select(`
+        *,
+        lead_source:lead_sources(name),
+        assigned_user:users!viewing_bookings_assigned_to_fkey(first_name, last_name),
+        room_grade_preference:lead_room_grades(name),
+        duration_type_preference:lead_duration_types(name)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async createViewingBooking(bookingData: Omit<ViewingBooking, 'id' | 'created_at' | 'updated_at'>): Promise<ViewingBooking> {
+    const { data, error } = await supabase
+      .from('viewing_bookings')
+      .insert(bookingData)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async updateViewingBooking(id: string, updates: Partial<ViewingBooking>): Promise<ViewingBooking> {
+    const { data, error } = await supabase
+      .from('viewing_bookings')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async deleteViewingBooking(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('viewing_bookings')
       .delete()
       .eq('id', id);
 
@@ -1326,6 +1604,28 @@ export class ApiService {
     const { data, error } = await supabase
       .from('lead_sources')
       .select('*')
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async getLeadRoomGrades(): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('lead_room_grades')
+      .select('*')
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async getLeadDurationTypes(): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('lead_duration_types')
+      .select('*')
+      .eq('is_active', true)
       .order('name', { ascending: true });
 
     if (error) throw error;
@@ -4937,6 +5237,560 @@ export class ApiService {
       'Seychelles': { lat: -4.6796, lng: 55.4920 },
       'Not Specified': { lat: 0, lng: 0 }
     };
+  }
+
+  // =====================================================
+  // EMAIL COMMUNICATION SYSTEM
+  // =====================================================
+
+  // Email Templates
+  static async getEmailTemplates(): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('email_templates')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async getEmailTemplateById(id: string): Promise<any | null> {
+    const { data, error } = await supabase
+      .from('email_templates')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async createEmailTemplate(templateData: any): Promise<any> {
+    const { data, error } = await supabase
+      .from('email_templates')
+      .insert(templateData)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async updateEmailTemplate(id: string, updates: any): Promise<any> {
+    const { data, error } = await supabase
+      .from('email_templates')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async deleteEmailTemplate(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('email_templates')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  // Email Campaigns
+  static async getEmailCampaigns(): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('email_campaigns')
+      .select(`
+        *,
+        email_templates (
+          id,
+          name,
+          category,
+          subject
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async getEmailCampaignById(id: string): Promise<any | null> {
+    const { data, error } = await supabase
+      .from('email_campaigns')
+      .select(`
+        *,
+        email_templates (
+          id,
+          name,
+          category,
+          subject,
+          html_content,
+          text_content,
+          variables
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async createEmailCampaign(campaignData: any): Promise<any> {
+    const { data, error } = await supabase
+      .from('email_campaigns')
+      .insert(campaignData)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async updateEmailCampaign(id: string, updates: any): Promise<any> {
+    const { data, error } = await supabase
+      .from('email_campaigns')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async deleteEmailCampaign(id: string): Promise<void> {
+    try {
+      // First, delete all related email deliveries
+      console.log('🗑️ Deleting related email deliveries for campaign:', id);
+      const { error: deliveriesError } = await supabase
+        .from('email_deliveries')
+        .delete()
+        .eq('campaign_id', id);
+
+      if (deliveriesError) {
+        console.error('Error deleting email deliveries:', deliveriesError);
+        throw deliveriesError;
+      }
+
+      console.log('✅ Email deliveries deleted successfully');
+
+      // Then delete the campaign
+      console.log('🗑️ Deleting email campaign:', id);
+      const { error: campaignError } = await supabase
+        .from('email_campaigns')
+        .delete()
+        .eq('id', id);
+
+      if (campaignError) {
+        console.error('Error deleting email campaign:', campaignError);
+        throw campaignError;
+      }
+
+      console.log('✅ Email campaign deleted successfully');
+    } catch (error) {
+      console.error('Error in deleteEmailCampaign:', error);
+      throw error;
+    }
+  }
+
+  // Student Segmentation
+  static async getStudentsForEmailCampaign(criteria: any): Promise<any[]> {
+    let query = supabase
+      .from('students')
+      .select(`
+        *,
+        user:user_id (
+          id,
+          email,
+          first_name,
+          last_name,
+          phone
+        )
+      `);
+
+    // Apply filters based on criteria
+    if (criteria.paymentStatus) {
+      if (criteria.paymentStatus === 'overdue') {
+        // Students with overdue invoices
+        query = query.in('id', await this.getOverdueStudentIds());
+      } else if (criteria.paymentStatus === 'upcoming') {
+        // Students with upcoming invoices
+        query = query.in('id', await this.getUpcomingStudentIds());
+      } else if (criteria.paymentStatus === 'current') {
+        // Students with current payments
+        query = query.in('id', await this.getCurrentStudentIds());
+      }
+    }
+
+    if (criteria.country) {
+      query = query.eq('country', criteria.country);
+    }
+
+    if (criteria.academicYear) {
+      query = query.eq('academic_year', criteria.academicYear);
+    }
+
+    if (criteria.installmentPlan) {
+      query = query.eq('installment_plan_id', criteria.installmentPlan);
+    }
+
+    if (criteria.hasEmail) {
+      query = query.not('user.email', 'is', null);
+    }
+
+    // Handle pre-selected students from segmentation
+    if (criteria.selectedStudentIds && criteria.selectedStudentIds.length > 0) {
+      query = query.in('id', criteria.selectedStudentIds);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
+
+  private static async getOverdueStudentIds(): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('student_id')
+      .eq('status', 'pending')
+      .lt('due_date', new Date().toISOString().split('T')[0])
+      .not('student_id', 'is', null);
+
+    if (error) throw error;
+    return data?.map(invoice => invoice.student_id).filter(Boolean) || [];
+  }
+
+  private static async getUpcomingStudentIds(): Promise<string[]> {
+    const today = new Date();
+    const sevenDaysFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('student_id')
+      .eq('status', 'pending')
+      .gte('due_date', today.toISOString().split('T')[0])
+      .lte('due_date', sevenDaysFromNow.toISOString().split('T')[0])
+      .not('student_id', 'is', null);
+
+    if (error) throw error;
+    return data?.map(invoice => invoice.student_id).filter(Boolean) || [];
+  }
+
+  private static async getCurrentStudentIds(): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('student_id')
+      .eq('status', 'completed')
+      .not('student_id', 'is', null);
+
+    if (error) throw error;
+    return data?.map(invoice => invoice.student_id).filter(Boolean) || [];
+  }
+
+  // Email Deliveries
+  static async getEmailDeliveries(campaignId?: string): Promise<any[]> {
+    let query = supabase
+      .from('email_deliveries')
+      .select(`
+        *,
+        students (
+          id,
+          first_name,
+          last_name,
+          user:user_id (
+            email
+          )
+        ),
+        email_templates (
+          name,
+          category
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (campaignId) {
+      query = query.eq('campaign_id', campaignId);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async createEmailDelivery(deliveryData: any): Promise<any> {
+    const { data, error } = await supabase
+      .from('email_deliveries')
+      .insert(deliveryData)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async updateEmailDelivery(id: string, updates: any): Promise<any> {
+    const { data, error } = await supabase
+      .from('email_deliveries')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  // Automated Email Rules
+  static async getAutomatedEmailRules(): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('automated_email_rules')
+      .select(`
+        *,
+        email_templates (
+          id,
+          name,
+          category,
+          subject
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async createAutomatedEmailRule(ruleData: any): Promise<any> {
+    const { data, error } = await supabase
+      .from('automated_email_rules')
+      .insert(ruleData)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async updateAutomatedEmailRule(id: string, updates: any): Promise<any> {
+    const { data, error } = await supabase
+      .from('automated_email_rules')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async deleteAutomatedEmailRule(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('automated_email_rules')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  // Email Analytics
+  static async getEmailAnalytics(campaignId?: string, dateRange?: { start: string; end: string }): Promise<any> {
+    let query = supabase
+      .from('email_analytics_summary')
+      .select('*')
+      .order('date', { ascending: false });
+
+    if (campaignId && campaignId !== 'all') {
+      query = query.eq('campaign_id', campaignId);
+    }
+
+    if (dateRange) {
+      query = query
+        .gte('date', dateRange.start)
+        .lte('date', dateRange.end);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    // Calculate totals
+    const totals = data?.reduce((acc, day) => {
+      acc.sent_count += day.sent_count || 0;
+      acc.delivered_count += day.delivered_count || 0;
+      acc.opened_count += day.opened_count || 0;
+      acc.clicked_count += day.clicked_count || 0;
+      acc.bounced_count += day.bounced_count || 0;
+      acc.payment_conversions += day.payment_conversions || 0;
+      return acc;
+    }, {
+      sent_count: 0,
+      delivered_count: 0,
+      opened_count: 0,
+      clicked_count: 0,
+      bounced_count: 0,
+      payment_conversions: 0
+    }) || {
+      sent_count: 0,
+      delivered_count: 0,
+      opened_count: 0,
+      clicked_count: 0,
+      bounced_count: 0,
+      payment_conversions: 0
+    };
+
+    return {
+      daily_data: data || [],
+      totals,
+      delivery_rate: totals.sent_count > 0 ? (totals.delivered_count / totals.sent_count) * 100 : 0,
+      open_rate: totals.delivered_count > 0 ? (totals.opened_count / totals.delivered_count) * 100 : 0,
+      click_rate: totals.delivered_count > 0 ? (totals.clicked_count / totals.delivered_count) * 100 : 0,
+      conversion_rate: totals.delivered_count > 0 ? (totals.payment_conversions / totals.delivered_count) * 100 : 0
+    };
+  }
+
+  // Student Email Preferences
+  static async getStudentEmailPreferences(studentId: string): Promise<any | null> {
+    const { data, error } = await supabase
+      .from('student_email_preferences')
+      .select('*')
+      .eq('student_id', studentId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  }
+
+  static async updateStudentEmailPreferences(studentId: string, preferences: any): Promise<any> {
+    const { data, error } = await supabase
+      .from('student_email_preferences')
+      .upsert({
+        student_id: studentId,
+        ...preferences
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  // Bulk Email Sending
+  static async sendBulkEmail(campaignId: string, studentIds: string[]): Promise<any> {
+    // This would integrate with your email service
+    // For now, we'll create delivery records
+    const campaign = await this.getEmailCampaignById(campaignId);
+    if (!campaign) throw new Error('Campaign not found');
+
+    const students = await this.getStudentsForEmailCampaign({ selectedStudentIds: studentIds });
+    const deliveries = [];
+
+    for (const student of students) {
+      if (student.user?.email) {
+        try {
+          // Get the email template
+          const template = await this.getEmailTemplateById(campaign.template_id);
+          
+          // Replace template variables with actual data
+          let subject = template.subject;
+          let htmlContent = template.html_content;
+          let textContent = template.text_content;
+          
+          // Replace common variables
+          const studentName = `${student.user.first_name || ''} ${student.user.last_name || ''}`.trim() || 'Student';
+          const variables = {
+            studentName,
+            studentEmail: student.user.email,
+            studentId: student.id,
+            campaignName: campaign.name
+          };
+          
+          // Replace variables in content
+          Object.entries(variables).forEach(([key, value]) => {
+            const placeholder = `{${key}}`;
+            subject = subject.replace(new RegExp(placeholder, 'g'), value);
+            htmlContent = htmlContent.replace(new RegExp(placeholder, 'g'), value);
+            textContent = textContent.replace(new RegExp(placeholder, 'g'), value);
+          });
+          
+          // Send the email using Supabase Edge Function
+          const emailPayload = {
+            to: student.user.email,
+            subject: subject,
+            html: htmlContent,
+            text: textContent,
+            templateId: campaign.template_id,
+            variables: variables
+          };
+          
+          console.log('📧 Sending email payload:', JSON.stringify(emailPayload, null, 2));
+          
+          const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-real-email', {
+            body: emailPayload
+          });
+          
+          if (emailError) {
+            console.error('Error sending email to', student.user.email, ':', emailError);
+            console.log('📧 Email service error details:', {
+              error: emailError,
+              studentEmail: student.user.email,
+              subject: subject,
+              timestamp: new Date().toISOString()
+            });
+            
+            // Fallback: Log email content for debugging
+            console.log('📧 FALLBACK: Email would have been sent:');
+            console.log('📧 To:', student.user.email);
+            console.log('📧 Subject:', subject);
+            console.log('📧 Content:', textContent);
+            
+            // Create delivery record with failed status
+            const delivery = await this.createEmailDelivery({
+              campaign_id: campaignId,
+              student_id: student.id,
+              template_id: campaign.template_id,
+              email_address: student.user.email,
+              status: 'failed',
+              error_message: emailError.message
+            });
+            deliveries.push(delivery);
+          } else {
+            console.log('Email sent successfully to', student.user.email);
+            // Create delivery record with sent status
+            const delivery = await this.createEmailDelivery({
+              campaign_id: campaignId,
+              student_id: student.id,
+              template_id: campaign.template_id,
+              email_address: student.user.email,
+              status: 'sent',
+              sent_at: new Date().toISOString()
+            });
+            deliveries.push(delivery);
+          }
+        } catch (error) {
+          console.error('Error processing email for student', student.id, ':', error);
+          // Create delivery record with failed status
+          const delivery = await this.createEmailDelivery({
+            campaign_id: campaignId,
+            student_id: student.id,
+            template_id: campaign.template_id,
+            email_address: student.user.email,
+            status: 'failed',
+            error_message: error.message
+          });
+          deliveries.push(delivery);
+        }
+      }
+    }
+
+    // Update campaign with recipient count and status
+    await this.updateEmailCampaign(campaignId, {
+      total_recipients: deliveries.length,
+      sent_count: deliveries.length,
+      status: 'sent'
+    });
+
+    return deliveries;
   }
 
 } 

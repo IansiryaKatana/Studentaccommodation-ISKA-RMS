@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Plus, Search, Filter, MoreHorizontal, Building2, Users, Globe, Calendar } from 'lucide-react';
 import { ApiService } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
+import { DashboardGridSkeleton, TableSkeleton } from '@/components/ui/skeleton';
 
 interface Reservation {
   id: string;
@@ -157,7 +158,7 @@ export default function ReservationsOverview() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">OTA Bookings</h2>
           <Button disabled>
@@ -165,11 +166,19 @@ export default function ReservationsOverview() {
             New Reservation
           </Button>
         </div>
-        <div className="animate-pulse space-y-4">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 bg-gray-200 rounded"></div>
-          ))}
-        </div>
+        
+        {/* Stats Cards Skeleton */}
+        <DashboardGridSkeleton cards={4} />
+        
+        {/* Table Skeleton */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Reservations</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TableSkeleton rows={8} columns={6} />
+          </CardContent>
+        </Card>
       </div>
     );
   }

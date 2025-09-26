@@ -19,6 +19,7 @@ import {
   Palette,
   MessageSquare
 } from 'lucide-react';
+import { DashboardGridSkeleton } from '@/components/ui/skeleton';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -189,18 +190,22 @@ const Dashboard = () => {
 
         {/* Module Grid - 3 rows, 4 columns */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {modules.map((module) => (
-            <ModuleCard
-              key={module.path}
-              title={module.title}
-              description={module.description}
-              icon={module.icon}
-              onClick={() => handleModuleClick(module.moduleName, module.path)}
-              moduleName={module.moduleName}
-              accessGranted={module.accessGranted}
-              notificationCount={module.notificationCount}
-            />
-          ))}
+          {isLoading ? (
+            <DashboardGridSkeleton cards={12} className="col-span-full" />
+          ) : (
+            modules.map((module) => (
+              <ModuleCard
+                key={module.path}
+                title={module.title}
+                description={module.description}
+                icon={module.icon}
+                onClick={() => handleModuleClick(module.moduleName, module.path)}
+                moduleName={module.moduleName}
+                accessGranted={module.accessGranted}
+                notificationCount={module.notificationCount}
+              />
+            ))
+          )}
         </div>
       </div>
 

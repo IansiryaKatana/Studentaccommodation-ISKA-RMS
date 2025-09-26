@@ -14,6 +14,7 @@ import { ApiService } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, MapPin, Search, Loader2, Eye, Calendar, User, CreditCard, CheckCircle, LogOut, Edit3, CheckSquare, Square, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { TableSkeleton } from '@/components/ui/skeleton';
 
 const TouristsBookings = () => {
   const navigate = useNavigate();
@@ -121,20 +122,20 @@ const TouristsBookings = () => {
     }
   };
 
-  const handleSelectAll = () => {
-    if (selectedBookings.size === filteredBookings.length) {
-      setSelectedBookings(new Set());
-    } else {
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
       setSelectedBookings(new Set(filteredBookings.map(booking => booking.id)));
+    } else {
+      setSelectedBookings(new Set());
     }
   };
 
-  const handleSelectBooking = (bookingId: string) => {
+  const handleSelectBooking = (bookingId: string, checked: boolean) => {
     const newSelected = new Set(selectedBookings);
-    if (newSelected.has(bookingId)) {
-      newSelected.delete(bookingId);
-    } else {
+    if (checked) {
       newSelected.add(bookingId);
+    } else {
+      newSelected.delete(bookingId);
     }
     setSelectedBookings(newSelected);
   };
@@ -391,10 +392,7 @@ const TouristsBookings = () => {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8">
-              <Loader2 className="mx-auto h-6 w-6 animate-spin text-gray-400" />
-              <p className="mt-2 text-sm text-gray-500">Loading tourist bookings...</p>
-            </div>
+            <TableSkeleton rows={10} columns={8} />
           ) : filteredBookings.length === 0 ? (
             <div className="text-center py-8">
               <MapPin className="mx-auto h-12 w-12 text-gray-400" />
@@ -408,7 +406,7 @@ const TouristsBookings = () => {
                     <TableHead className="w-12">
                       <Checkbox
                         checked={selectedBookings.size === filteredBookings.length && filteredBookings.length > 0}
-                        onCheckedChange={handleSelectAll}
+                        onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
                       />
                     </TableHead>
                     <TableHead>Guest</TableHead>
@@ -430,7 +428,7 @@ const TouristsBookings = () => {
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selectedBookings.has(booking.id)}
-                          onCheckedChange={() => handleSelectBooking(booking.id)}
+                          onCheckedChange={(checked) => handleSelectBooking(booking.id, Boolean(checked))}
                         />
                       </TableCell>
                       <TableCell>

@@ -1,0 +1,56 @@
+{
+  "room_grades": [
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440001",
+      "name": "Silver",
+      "description": "Silver studio with modern facilities"
+    },
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440002", 
+      "name": "Gold",
+      "description": "Gold studio with premium facilities"
+    },
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440003",
+      "name": "Platinum", 
+      "description": "Platinum studio with luxury facilities"
+    },
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440004",
+      "name": "Rhodium",
+      "description": "Rhodium studio with premium amenities"
+    },
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440005",
+      "name": "Rhodium Plus",
+      "description": "Rhodium Plus studio with luxury amenities"
+    }
+  ],
+  "duration_types": [
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440001",
+      "name": "45 Weeks",
+      "description": "45 weeks stay"
+    },
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440002",
+      "name": "51 Weeks", 
+      "description": "51 weeks stay"
+    },
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440003",
+      "name": "Short Stay",
+      "description": "Short term stay"
+    },
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440004",
+      "name": "Long-Term Stay",
+      "description": "Long term stay"
+    },
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440005",
+      "name": "Not Sure Yet",
+      "description": "Duration to be determined"
+    }
+  ]
+}

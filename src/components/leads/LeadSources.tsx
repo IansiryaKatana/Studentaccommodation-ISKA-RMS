@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Globe, Phone, Mail, Users, ArrowLeft, Search, Filter } from 'lucide-react';
+import { Plus, Globe, Phone, Mail, Users, ArrowLeft, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ApiService, Lead } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 
@@ -21,6 +22,7 @@ interface LeadSource {
 }
 
 const LeadSources = () => {
+  const navigate = useNavigate();
   const [sources, setSources] = useState<LeadSource[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
@@ -30,11 +32,31 @@ const LeadSources = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
+  
+  // Carousel state
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAutoScrolling, setIsAutoScrolling] = useState(true);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchLeadSources();
     fetchAllLeads();
   }, []);
+
+  // Auto-select first source when sources are loaded
+  useEffect(() => {
+    if (sources.length > 0 && !selectedSource) {
+      const sourcesWithLeads = sources.filter(source => source.lead_count > 0);
+      if (sourcesWithLeads.length > 0) {
+        setSelectedSource(sourcesWithLeads[0]);
+        // Filter leads for the first source
+        const filteredLeads = allLeads.filter(lead => 
+          lead.lead_source?.name === sourcesWithLeads[0].name
+        );
+        setLeads(filteredLeads);
+      }
+    }
+  }, [sources, allLeads, selectedSource]);
 
   const fetchLeadSources = async () => {
     try {
@@ -87,7 +109,7 @@ const LeadSources = () => {
     setSelectedSource(source);
     // Filter leads based on selected source
     const filteredLeads = allLeads.filter(lead => 
-      (lead as any).source?.name === source.name
+      lead.lead_source?.name === source.name
     );
     setLeads(filteredLeads);
   };
@@ -121,16 +143,54 @@ const LeadSources = () => {
 
   const getSourceColor = (name: string) => {
     const colors: Record<string, string> = {
-      'Website': 'from-blue-500 to-blue-600',
-      'Phone': 'from-green-500 to-green-600',
-      'Email': 'from-purple-500 to-purple-600',
+      'Websites': 'from-blue-500 to-blue-600',
+      'WhatsApp': 'from-green-500 to-green-600',
+      'Google Ads': 'from-red-500 to-red-600',
+      'Referrals': 'from-orange-500 to-orange-600',
+      'Meta Ads': 'from-purple-500 to-purple-600',
+      'Phone': 'from-teal-500 to-teal-600',
+      'Email': 'from-indigo-500 to-indigo-600',
       'Social Media': 'from-pink-500 to-pink-600',
-      'Referral': 'from-orange-500 to-orange-600',
-      'Walk-in': 'from-indigo-500 to-indigo-600',
+      'Walk-in': 'from-amber-500 to-amber-600',
       'Other': 'from-gray-500 to-gray-600'
     };
     return colors[name] || 'from-gray-500 to-gray-600';
   };
+
+
+  // Carousel functions
+  const nextSlide = () => {
+    const sourcesWithLeads = sources.filter(source => source.lead_count > 0);
+    if (sourcesWithLeads.length <= 4) return; // No need to scroll if 4 or fewer cards
+    
+    setCurrentIndex((prev) => Math.min(prev + 1, sourcesWithLeads.length - 4));
+    setIsAutoScrolling(false);
+  };
+
+  const prevSlide = () => {
+    const sourcesWithLeads = sources.filter(source => source.lead_count > 0);
+    if (sourcesWithLeads.length <= 4) return; // No need to scroll if 4 or fewer cards
+    
+    setCurrentIndex((prev) => Math.max(prev - 1, 0));
+    setIsAutoScrolling(false);
+  };
+
+  // Auto-scroll effect
+  useEffect(() => {
+    if (!isAutoScrolling) return;
+    
+    const sourcesWithLeads = sources.filter(source => source.lead_count > 0);
+    if (sourcesWithLeads.length <= 4) return; // Only auto-scroll if more than 4 sources
+
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => {
+        const maxIndex = sourcesWithLeads.length - 4;
+        return prev >= maxIndex ? 0 : prev + 1;
+      });
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [isAutoScrolling, sources]);
 
 
 
@@ -204,41 +264,93 @@ const LeadSources = () => {
           <h1 className="text-2xl font-bold text-gray-900">Lead Sources</h1>
           <p className="text-gray-600">Manage and track lead sources</p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Source
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Navigation arrows - only show when more than 4 sources */}
+          {sources.filter(source => source.lead_count > 0).length > 4 && (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={prevSlide}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={nextSlide}
+                className="h-8 w-8 p-0"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Source
+          </Button>
+        </div>
       </div>
 
-      {/* Source Cards - Responsive grid layout */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {sources.map((source, index) => {
-          const IconComponent = getSourceIcon(source.name);
-          return (
-            <div
-              key={source.id}
-              className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
-                selectedSource?.id === source.id ? 'ring-2 ring-blue-500' : ''
-              }`}
-              onClick={() => handleCardClick(source)}
-            >
-              <Card className={`h-32 bg-gradient-to-r ${getSourceColor(source.name)} text-white border-0`}>
-                <CardContent className="p-4 flex flex-col justify-between h-full">
-                  <div className="flex items-center justify-between">
-                    <IconComponent className="h-6 w-6" />
-                    <Badge variant="secondary" className="bg-white/20 text-white">
-                      {source.lead_count}
-                    </Badge>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">{source.name}</h3>
-                    <p className="text-sm opacity-90 truncate">{source.description}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          );
-        })}
+      {/* Source Cards - Always show 4 cards */}
+      <div className="py-4">
+        <div className="grid grid-cols-4 gap-4">
+          {sources
+            .filter(source => source.lead_count > 0)
+            .slice(currentIndex, currentIndex + 4)
+            .map((source) => {
+              const IconComponent = getSourceIcon(source.name);
+              const isSelected = selectedSource?.id === source.id;
+              
+              return (
+                <div
+                  key={source.id}
+                  className={`cursor-pointer transition-all duration-200 ${
+                    isSelected ? 'ring-2 ring-blue-500 rounded-lg p-1' : 'p-1'
+                  }`}
+                  onClick={() => handleCardClick(source)}
+                >
+                  <Card className={`h-32 bg-gradient-to-r ${getSourceColor(source.name)} text-white border-0 ${
+                    isSelected ? 'shadow-lg' : ''
+                  }`}>
+                    <CardContent className="p-4 flex flex-col justify-between h-full">
+                      <div className="flex items-center justify-between">
+                        <IconComponent className="h-6 w-6" />
+                        <Badge variant="secondary" className="bg-white/20 text-white">
+                          {source.lead_count}
+                        </Badge>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg">{source.name}</h3>
+                        <p className="text-sm opacity-90 truncate">{source.description}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })}
+        </div>
+        
+        {/* Carousel indicators - only show when more than 4 sources */}
+        {sources.filter(source => source.lead_count > 0).length > 4 && (
+          <div className="flex justify-center mt-4 gap-2">
+            {sources
+              .filter(source => source.lead_count > 0)
+              .map((_, index) => (
+                <button
+                  key={index}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    index === currentIndex ? 'bg-blue-500' : 'bg-gray-300'
+                  }`}
+                  onClick={() => {
+                    setCurrentIndex(index);
+                    setIsAutoScrolling(false);
+                  }}
+                />
+              ))}
+          </div>
+        )}
       </div>
 
       {/* Table Section */}
@@ -312,13 +424,11 @@ const LeadSources = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Budget</TableHead>
-                <TableHead>Move-in Date</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Room Grade</TableHead>
                 <TableHead>Duration</TableHead>
-                <TableHead>Source</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Revenue</TableHead>
                 <TableHead>Assigned To</TableHead>
                 <TableHead>Created</TableHead>
               </TableRow>
@@ -326,31 +436,52 @@ const LeadSources = () => {
             <TableBody>
               {filteredLeads.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                     {selectedSource ? `No leads found for ${selectedSource.name}` : 'No leads found'}
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredLeads.map((lead) => (
-                  <TableRow key={lead.id} className="hover:bg-gray-50">
+                  <TableRow 
+                    key={lead.id} 
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => navigate(`/leads/${lead.id}`)}
+                  >
                     <TableCell className="font-medium">
                       {lead.first_name} {lead.last_name}
                     </TableCell>
-                    <TableCell>{lead.email}</TableCell>
-                    <TableCell>{lead.phone}</TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        {lead.email && (
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-3 w-3 text-gray-400" />
+                            <span className="text-sm">{lead.email}</span>
+                          </div>
+                        )}
+                        {lead.phone && (
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-3 w-3 text-gray-400" />
+                            <span className="text-sm">{lead.phone}</span>
+                          </div>
+                        )}
+                        {!lead.email && !lead.phone && (
+                          <span className="text-gray-400 text-sm">N/A</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{lead.room_grade_preference?.name || 'N/A'}</TableCell>
+                    <TableCell>{lead.duration_type_preference?.name || 'N/A'}</TableCell>
                     <TableCell>
                       <Badge className={getStatusColor(lead.status)}>
                         {lead.status.replace('_', ' ')}
                       </Badge>
                     </TableCell>
-                    <TableCell>£{lead.budget?.toLocaleString()}</TableCell>
+                    <TableCell>${lead.estimated_revenue?.toLocaleString() || '0'}</TableCell>
                     <TableCell>
-                      {lead.move_in_date ? new Date(lead.move_in_date).toLocaleDateString() : '-'}
-                    </TableCell>
-                    <TableCell>{lead.duration_months} months</TableCell>
-                    <TableCell>{(lead as any).source?.name || '-'}</TableCell>
-                    <TableCell>
-                      {(lead as any).assigned_to ? `${(lead as any).assigned_to.first_name} ${(lead as any).assigned_to.last_name}` : '-'}
+                      {lead.assigned_user ? 
+                        `${lead.assigned_user.first_name} ${lead.assigned_user.last_name}` : 
+                        'Unassigned'
+                      }
                     </TableCell>
                     <TableCell>
                       {new Date(lead.created_at).toLocaleDateString()}

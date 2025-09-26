@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useLeadCounters } from '@/hooks/useLeadCounters';
 import {
   Sidebar,
   SidebarContent,
@@ -23,6 +24,7 @@ import {
   Calendar,
   UserCheck,
   Sparkles,
+  ExternalLink,
   DollarSign,
   Database,
   Settings,
@@ -47,11 +49,14 @@ import {
   ChevronDown,
   ChevronRight,
   Upload,
+  Phone,
   Globe,
   Mail,
   MessageSquare,
   Receipt,
-  BarChart3
+  BarChart3,
+  Send,
+  TrendingUp
 } from 'lucide-react';
 import { useModuleStyles } from '@/contexts/ModuleStylesContext';
 import { useAuth, useModuleAccess } from '@/contexts/AuthContext';
@@ -90,6 +95,9 @@ interface SubmenuItemProps {
   isActive: (path: string) => boolean;
   navigate: (path: string) => void;
   fullPath: string;
+  counters?: { callbackCount: number; viewingCount: number };
+  markCallbackVisited?: () => void;
+  markViewingVisited?: () => void;
 }
 
 interface AppSidebarProps {
@@ -105,9 +113,20 @@ const moduleRoutes: Record<string, ModuleRoute> = {
     pages: [
       { title: 'All Leads', path: '/leads', icon: Users },
       { title: 'Add Lead', path: '/leads/new', icon: Plus },
+      { 
+        title: 'Website Leads', 
+        path: '/leads/website/callback', 
+        icon: ExternalLink,
+        hasSubmenu: true,
+        submenu: [
+          { title: 'Get a Callback', path: '/leads/website/callback', icon: Phone },
+          { title: 'Booked a Viewing', path: '/leads/website/viewing', icon: Calendar }
+        ]
+      },
+      { title: 'Follow-ups', path: '/leads/follow-ups', icon: FileText },
       { title: 'Lead Sources', path: '/leads/sources', icon: Search },
       { title: 'Lead Statuses', path: '/leads/statuses', icon: BarChart },
-      { title: 'Follow-ups', path: '/leads/follow-ups', icon: FileText }
+      { title: 'Import CSV', path: '/leads/import', icon: Upload }
     ]
   },
   'ota-bookings': {
@@ -226,8 +245,13 @@ const moduleRoutes: Record<string, ModuleRoute> = {
     gradient: 'comms-marketing',
     pages: [
       { title: 'Overview', path: '/comms-marketing', icon: MessageSquare },
+      { title: 'Email Templates', path: '/comms-marketing/email-templates', icon: Mail },
+      { title: 'Student Segmentation', path: '/comms-marketing/student-segmentation', icon: Users },
+      { title: 'Bulk Email Sender', path: '/comms-marketing/bulk-email-sender', icon: Send },
+      { title: 'Automated Reminders', path: '/comms-marketing/automated-reminders', icon: Bell },
+      { title: 'Email Analytics', path: '/comms-marketing/email-analytics', icon: BarChart3 },
       { title: 'Maintenance Requests', path: '/comms-marketing/maintenance-requests', icon: Wrench },
-      { title: 'Analytics', path: '/comms-marketing/analytics', icon: BarChart3 }
+      { title: 'Student Analytics', path: '/comms-marketing/analytics', icon: TrendingUp }
     ]
   },
   settings: {
@@ -245,7 +269,8 @@ const moduleRoutes: Record<string, ModuleRoute> = {
       { title: 'Notifications', path: '/settings/notifications', icon: Bell },
       { title: 'Configuration', path: '/settings/config', icon: Database },
       { title: 'Module Access Config', path: '/settings/module-access', icon: Shield, hasSubmenu: false },
-      { title: 'Bulk Upload Students', path: '/settings/bulk-upload-students', icon: Upload }
+      { title: 'Bulk Upload Students', path: '/settings/bulk-upload-students', icon: Upload },
+      { title: 'Leads Settings', path: '/settings/leads', icon: Users }
     ]
   },
   'student-portal': {
@@ -269,7 +294,10 @@ function SubmenuItem({
   module, 
   isActive, 
   navigate, 
-  fullPath 
+  fullPath,
+  counters,
+  markCallbackVisited,
+  markViewingVisited
 }: SubmenuItemProps) {
   const [isExpanded, setIsExpanded] = React.useState(false);
   const { state } = useSidebar();
@@ -312,23 +340,48 @@ function SubmenuItem({
       
       {isExpanded && state === "expanded" && page.submenu && (
         <div className="ml-4 mt-1 space-y-1">
-          {page.submenu.map((subItem) => (
-            <SidebarMenuButton
-              key={subItem.path}
-              onClick={() => navigate(subItem.path)}
-              isActive={isActive(subItem.path)}
-              className={`pl-8 ${isActive(subItem.path) 
-                ? 'text-white font-semibold !text-white data-[active=true]:!text-white sidebar-active-gradient' 
-                : 'hover:bg-accent hover:text-accent-foreground'
-              }`}
-              style={isActive(subItem.path) ? { 
-                '--custom-gradient': getModuleGradient(module.gradient)
-              } as React.CSSProperties : {}}
-            >
-              <subItem.icon className="size-4" />
-              <span>{subItem.title}</span>
-            </SidebarMenuButton>
-          ))}
+          {page.submenu.map((subItem) => {
+            // Get counter for this submenu item
+            let counter = 0;
+            if (counters) {
+              if (subItem.path === '/leads/website/callback') {
+                counter = counters.callbackCount;
+              } else if (subItem.path === '/leads/website/viewing') {
+                counter = counters.viewingCount;
+              }
+            }
+
+            return (
+              <SidebarMenuButton
+                key={subItem.path}
+                onClick={() => {
+                  // Mark as visited when clicked
+                  if (subItem.path === '/leads/website/callback' && markCallbackVisited) {
+                    markCallbackVisited();
+                  } else if (subItem.path === '/leads/website/viewing' && markViewingVisited) {
+                    markViewingVisited();
+                  }
+                  navigate(subItem.path);
+                }}
+                isActive={isActive(subItem.path)}
+                className={`pl-8 ${isActive(subItem.path) 
+                  ? 'text-white font-semibold !text-white data-[active=true]:!text-white sidebar-active-gradient' 
+                  : 'hover:bg-accent hover:text-accent-foreground'
+                }`}
+                style={isActive(subItem.path) ? { 
+                  '--custom-gradient': getModuleGradient(module.gradient)
+                } as React.CSSProperties : {}}
+              >
+                <subItem.icon className="size-4" />
+                <span>{subItem.title}</span>
+                {counter > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
+                    {counter}
+                  </span>
+                )}
+              </SidebarMenuButton>
+            );
+          })}
         </div>
       )}
     </SidebarMenuItem>
@@ -341,6 +394,7 @@ function AppSidebar() {
   const { state } = useSidebar();
   const navigate = useNavigate();
   const location = useLocation();
+  const { counters, markCallbackVisited, markViewingVisited } = useLeadCounters();
 
   const getCurrentModule = () => {
     const path = location.pathname;
@@ -455,6 +509,9 @@ function AppSidebar() {
                       isActive={isActive}
                       navigate={navigate}
                       fullPath={fullPath}
+                      counters={counters}
+                      markCallbackVisited={markCallbackVisited}
+                      markViewingVisited={markViewingVisited}
                     />
                   );
                 }

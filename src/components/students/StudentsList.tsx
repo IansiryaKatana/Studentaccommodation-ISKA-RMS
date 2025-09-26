@@ -40,6 +40,7 @@ import {
   Key,
   User
 } from 'lucide-react';
+import { TableSkeleton, ListSkeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { ApiService, StudentWithUser } from '@/services/api';
 import {
@@ -382,12 +383,39 @@ const StudentsList = () => {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
-                      <Loader2 className="mx-auto h-6 w-6 animate-spin text-gray-400" />
-                      <p className="mt-2 text-sm text-gray-500">Loading students...</p>
-                    </TableCell>
-                  </TableRow>
+                  <>
+                    {Array.from({ length: 8 }).map((_, index) => (
+                      <TableRow key={index}>
+                        <TableCell>
+                          <div className="flex items-center space-x-3">
+                            <div className="h-10 w-10 rounded-full bg-gray-200 animate-pulse" />
+                            <div className="space-y-1">
+                              <div className="h-4 w-32 bg-gray-200 rounded animate-pulse" />
+                              <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-4 w-28 bg-gray-200 rounded animate-pulse" />
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-6 w-16 bg-gray-200 rounded-full animate-pulse" />
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-8 w-8 bg-gray-200 rounded animate-pulse" />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </>
                 ) : (
                   filteredStudents.map((student) => {
                     const progress = calculateProgress(student);

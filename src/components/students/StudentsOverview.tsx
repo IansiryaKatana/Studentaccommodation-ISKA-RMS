@@ -7,6 +7,7 @@ import {
   Plus
 } from 'lucide-react';
 import { ApiService } from '@/services/api';
+import { DashboardGridSkeleton, TableSkeleton } from '@/components/ui/skeleton';
 
 const StudentsOverview = () => {
   const [stats, setStats] = useState({
@@ -156,18 +157,22 @@ const StudentsOverview = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        {statsCards.map((stat, index) => (
-          <Card key={index} className={`${stat.bgColor} border-0`}>
-            <CardContent className="p-4">
-              <div className="text-center">
-                <p className="text-sm font-medium text-gray-600 mb-2">{stat.title}</p>
-                <p className={`text-2xl font-bold ${stat.color} break-words`}>
-                  {isLoading ? '...' : stat.value}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {isLoading ? (
+          <DashboardGridSkeleton cards={6} className="col-span-full" />
+        ) : (
+          statsCards.map((stat, index) => (
+            <Card key={index} className={`${stat.bgColor} border-0`}>
+              <CardContent className="p-4">
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-600 mb-2">{stat.title}</p>
+                  <p className={`text-2xl font-bold ${stat.color} break-words`}>
+                    {stat.value}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
 
@@ -186,9 +191,7 @@ const StudentsOverview = () => {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-gray-500">
-              <p>Loading students...</p>
-            </div>
+            <TableSkeleton rows={5} columns={4} />
           ) : recentStudents.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <p>No students found</p>
