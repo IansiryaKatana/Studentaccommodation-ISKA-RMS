@@ -1,10 +1,22 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Globe, Calendar, FileText } from 'lucide-react';
+import { DashboardGridSkeleton } from '@/components/ui/skeleton';
 
 const WebAccessOverview = () => {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate loading time
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   const quickActions = [
     {
       title: 'Reservations',
@@ -34,7 +46,11 @@ const WebAccessOverview = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
+        {isLoading ? (
+          <DashboardGridSkeleton cards={3} className="col-span-full" />
+        ) : (
+          <>
+            <Card>
           <CardContent className="p-6">
             <div className="flex items-center">
               <Globe className="h-8 w-8 text-blue-600" />
@@ -69,13 +85,22 @@ const WebAccessOverview = () => {
             </div>
           </CardContent>
         </Card>
+          </>
+        )}
       </div>
 
       {/* Quick Actions */}
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {quickActions.map((action, index) => {
+          {isLoading ? (
+            <>
+              {Array.from({ length: 2 }).map((_, index) => (
+                <div key={index} className="h-32 bg-gray-200 rounded-lg animate-pulse" />
+              ))}
+            </>
+          ) : (
+            quickActions.map((action, index) => {
             const Icon = action.icon;
             return (
               <Link key={index} to={action.path}>
@@ -92,7 +117,8 @@ const WebAccessOverview = () => {
                 </Card>
               </Link>
             );
-          })}
+          })
+          )}
         </div>
       </div>
 

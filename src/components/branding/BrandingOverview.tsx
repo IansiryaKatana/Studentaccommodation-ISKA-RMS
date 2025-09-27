@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { Palette, Settings, TrendingUp, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ApiService } from '@/services/api';
+import { DashboardGridSkeleton } from '@/components/ui/skeleton';
 
 interface BrandingStats {
   moduleStyles: number;
@@ -87,8 +88,8 @@ const BrandingOverview = () => {
             <p className="text-muted-foreground">Manage visual identity and module styling</p>
           </div>
         </div>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <DashboardGridSkeleton cards={6} className="col-span-full" />
         </div>
       </div>
     );

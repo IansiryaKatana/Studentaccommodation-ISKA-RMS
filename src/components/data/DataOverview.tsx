@@ -7,6 +7,7 @@ import { Database, Users, Calendar, Building, DollarSign, TrendingUp, TrendingDo
 import { ApiService } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
+import { DashboardGridSkeleton } from '@/components/ui/skeleton';
 
 const DataOverview = () => {
   const { toast } = useToast();
@@ -244,12 +245,8 @@ const DataOverview = () => {
           </div>
         </div>
         
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading data management modules...</p>
-            <p className="text-sm text-muted-foreground mt-2">This may take a few moments</p>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <DashboardGridSkeleton cards={9} className="col-span-full" />
         </div>
       </div>
     );

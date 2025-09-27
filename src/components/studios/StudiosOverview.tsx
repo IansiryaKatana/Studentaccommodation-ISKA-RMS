@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Plus } from 'lucide-react';
 import { ApiService } from '@/services/api';
 import PaymentEventService, { PaymentEvent } from '@/services/paymentEventService';
+import { TableSkeleton, StatsCardSkeleton } from '@/components/ui/skeleton';
 
 const StudiosOverview = () => {
   const [stats, setStats] = useState({
@@ -171,7 +172,14 @@ const StudiosOverview = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-4">
-        {statsCards.map((stat, index) => (
+        {isLoading ? (
+          <>
+            {Array.from({ length: 7 }).map((_, index) => (
+              <StatsCardSkeleton key={index} />
+            ))}
+          </>
+        ) : (
+          statsCards.map((stat, index) => (
           <Card key={index} className={`${stat.bgColor} border-0`}>
             <CardContent className="p-4">
               <div className="text-center">
@@ -182,7 +190,8 @@ const StudiosOverview = () => {
               </div>
             </CardContent>
           </Card>
-        ))}
+        ))
+        )}
       </div>
 
       {/* Recent Studios Table */}
@@ -199,9 +208,7 @@ const StudiosOverview = () => {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8 text-gray-500">
-              <p>Loading studios...</p>
-            </div>
+            <TableSkeleton rows={5} columns={5} />
           ) : recentStudios.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <p>No studios found</p>

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,9 +17,20 @@ import {
   Palette
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { CardSkeleton, DashboardGridSkeleton } from '@/components/ui/skeleton';
 
 const SettingsOverview = () => {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate loading time
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const settingsCards = [
     {
@@ -132,7 +143,10 @@ const SettingsOverview = () => {
 
       {/* Settings Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {settingsCards.map((setting) => {
+        {isLoading ? (
+          <DashboardGridSkeleton cards={6} className="col-span-full" />
+        ) : (
+          settingsCards.map((setting) => {
           const Icon = setting.icon;
           return (
             <Card 
@@ -187,7 +201,8 @@ const SettingsOverview = () => {
               </CardContent>
             </Card>
           );
-        })}
+        })
+        )}
       </div>
 
       {/* System Alerts */}
@@ -198,7 +213,23 @@ const SettingsOverview = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {systemAlerts.map((alert, index) => (
+            {isLoading ? (
+              <>
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="h-4 w-4 bg-gray-200 rounded animate-pulse" />
+                      <div className="space-y-2">
+                        <div className="h-4 w-48 bg-gray-200 rounded animate-pulse" />
+                        <div className="h-3 w-32 bg-gray-200 rounded animate-pulse" />
+                      </div>
+                    </div>
+                    <div className="h-8 w-20 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                ))}
+              </>
+            ) : (
+              systemAlerts.map((alert, index) => (
               <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex items-center space-x-3">
                   {getAlertIcon(alert.type)}
@@ -213,7 +244,8 @@ const SettingsOverview = () => {
                   {alert.action}
                 </Button>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </CardContent>
       </Card>
@@ -226,18 +258,28 @@ const SettingsOverview = () => {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button variant="outline" className="h-16 flex-col space-y-2">
-              <Users className="h-5 w-5" />
-              <span>Add New User</span>
-            </Button>
-            <Button variant="outline" className="h-16 flex-col space-y-2">
-              <Database className="h-5 w-5" />
-              <span>Backup System</span>
-            </Button>
-            <Button variant="outline" className="h-16 flex-col space-y-2">
-              <Shield className="h-5 w-5" />
-              <span>Security Scan</span>
-            </Button>
+            {isLoading ? (
+              <>
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="h-16 bg-gray-200 rounded animate-pulse" />
+                ))}
+              </>
+            ) : (
+              <>
+                <Button variant="outline" className="h-16 flex-col space-y-2">
+                  <Users className="h-5 w-5" />
+                  <span>Add New User</span>
+                </Button>
+                <Button variant="outline" className="h-16 flex-col space-y-2">
+                  <Database className="h-5 w-5" />
+                  <span>Backup System</span>
+                </Button>
+                <Button variant="outline" className="h-16 flex-col space-y-2">
+                  <Shield className="h-5 w-5" />
+                  <span>Security Scan</span>
+                </Button>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>

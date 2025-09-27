@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { ApiService } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
+import { DashboardGridSkeleton } from '@/components/ui/skeleton';
 
 interface CommsMarketingStats {
   totalMaintenanceRequests: number;
@@ -101,9 +102,16 @@ const CommsMarketingOverview = () => {
 
   if (isLoading) {
     return (
-      <div className="p-6 text-center">
-        <Loader2 className="mx-auto h-8 w-8 animate-spin text-gray-400" />
-        <p className="mt-2 text-sm text-gray-500">Loading communication and marketing data...</p>
+      <div className="space-y-6 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Comms & Marketing</h1>
+            <p className="text-gray-600">Manage communications and marketing activities</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <DashboardGridSkeleton cards={4} className="col-span-full" />
+        </div>
       </div>
     );
   }
