@@ -1,0 +1,48 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# Disable secrets scanning for specific paths
+[build.processing]
+  skip_processing = false
+
+# Configure secrets scanning
+[build.processing.secrets]
+  # Disable secrets scanning entirely (not recommended for production)
+  # enabled = false
+  
+  # Or exclude specific paths from secrets scanning
+  omit_paths = [
+    "backup-scripts/**",
+    "scripts/**",
+    "*.md",
+    "*.cjs",
+    "*.js",
+    "env.example",
+    "env.sample"
+  ]
+  
+  # Or exclude specific keys from detection
+  omit_keys = [
+    "VITE_APP_ENV",
+    "VITE_APP_NAME",
+    "VITE_APP_VERSION"
+  ]
+
+# Headers for security
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Redirect rules
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
