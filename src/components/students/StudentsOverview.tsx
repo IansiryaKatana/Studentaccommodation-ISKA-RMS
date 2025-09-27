@@ -65,12 +65,12 @@ const StudentsOverview = () => {
           invoice.status === 'completed'
         ).length;
         
-        console.log('Revenue calculation:', {
-          studentReservations: studentReservations.length,
-          totalRevenue,
-          studentInvoices: studentInvoices.length,
-          completedPayments
-        });
+        // console.log('Revenue calculation:', {
+        //   studentReservations: studentReservations.length,
+        //   totalRevenue,
+        //   studentInvoices: studentInvoices.length,
+        //   completedPayments
+        // });
         
       } catch (error) {
         console.error('Error calculating revenue:', error);

@@ -86,8 +86,9 @@ const StudentCheckInOut = () => {
   };
 
   const filteredStudents = students.filter(student => {
-    const fullName = `${student.user.first_name} ${student.user.last_name}`.toLowerCase();
-    const email = student.user.email.toLowerCase();
+    if (!student.user) return false;
+    const fullName = `${student.user.first_name || ''} ${student.user.last_name || ''}`.toLowerCase();
+    const email = (student.user.email || '').toLowerCase();
     const search = searchTerm.toLowerCase();
     return fullName.includes(search) || email.includes(search);
   });
@@ -109,7 +110,7 @@ const StudentCheckInOut = () => {
 
       toast({
         title: "Success",
-        description: `${selectedStudent.user.first_name} ${selectedStudent.user.last_name} checked in successfully`,
+        description: `${selectedStudent.user?.first_name || 'Student'} ${selectedStudent.user?.last_name || ''} checked in successfully`,
       });
 
       // Reset form and refresh data
@@ -158,7 +159,7 @@ const StudentCheckInOut = () => {
 
       toast({
         title: "Success",
-        description: `${selectedStudent.user.first_name} ${selectedStudent.user.last_name} checked out successfully`,
+        description: `${selectedStudent.user?.first_name || 'Student'} ${selectedStudent.user?.last_name || ''} checked out successfully`,
       });
 
       // Reset form and refresh data
@@ -198,9 +199,9 @@ const StudentCheckInOut = () => {
             </div>
             <div>
               <div className="font-medium">
-                {student.user.first_name} {student.user.last_name}
+                {student.user?.first_name || 'Unknown'} {student.user?.last_name || 'Student'}
               </div>
-              <div className="text-sm text-gray-500">{student.user.email}</div>
+              <div className="text-sm text-gray-500">{student.user?.email || 'No email'}</div>
               {student.studio && (
                 <div className="text-sm text-blue-600">
                   Studio: {student.studio.studio_number}
@@ -295,7 +296,7 @@ const StudentCheckInOut = () => {
                   ) : (
                     <LogOut className="h-5 w-5 text-red-600" />
                   )}
-                  {activeTab === 'checkin' ? 'Check-in' : 'Check-out'}: {selectedStudent.user.first_name} {selectedStudent.user.last_name}
+                  {activeTab === 'checkin' ? 'Check-in' : 'Check-out'}: {selectedStudent.user?.first_name || 'Unknown'} {selectedStudent.user?.last_name || 'Student'}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -303,7 +304,7 @@ const StudentCheckInOut = () => {
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="font-medium">Email:</span> {selectedStudent.user.email}
+                      <span className="font-medium">Email:</span> {selectedStudent.user?.email || 'No email'}
                     </div>
                     <div>
                       <span className="font-medium">Studio:</span> {selectedStudent.studio?.studio_number || 'Not assigned'}
