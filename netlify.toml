@@ -18,18 +18,36 @@
   omit_paths = [
     "backup-scripts/**",
     "scripts/**",
+    "backups/**",
+    "dist/**",
     "*.md",
     "*.cjs",
     "*.js",
+    "*.sql",
+    "*.zip",
+    "*.json",
+    "*.html",
+    "*.php",
     "env.example",
-    "env.sample"
+    "env.sample",
+    "database_dump_*.sql",
+    "supabase/**",
+    "public/**"
   ]
   
   # Or exclude specific keys from detection
   omit_keys = [
     "VITE_APP_ENV",
     "VITE_APP_NAME",
-    "VITE_APP_VERSION"
+    "VITE_APP_VERSION",
+    "VITE_STRIPE_API_BASE",
+    "VITE_STRIPE_PUBLISHABLE_KEY",
+    "VITE_STRIPE_SECRET_KEY",
+    "VITE_SUPABASE_URL",
+    "VITE_SUPABASE_ANON_KEY",
+    "VITE_SUPABASE_SERVICE_ROLE_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "VITE_JWT_SECRET"
   ]
 
 # Headers for security
