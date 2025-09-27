@@ -12,7 +12,7 @@
 # Configure secrets scanning
 [build.processing.secrets]
   # Disable secrets scanning entirely (not recommended for production)
-  # enabled = false
+  enabled = false
   
   # Or exclude specific paths from secrets scanning
   omit_paths = [
