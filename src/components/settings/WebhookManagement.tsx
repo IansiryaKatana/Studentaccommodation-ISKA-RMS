@@ -342,9 +342,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
-// Supabase configuration
-$SUPABASE_URL = 'https://vwgczfdedacpymnxzxcp.supabase.co';
-$SUPABASE_SERVICE_ROLE_KEY = 'your-service-role-key';
+// Supabase configuration - REPLACE WITH YOUR ACTUAL VALUES
+$SUPABASE_URL = 'YOUR_SUPABASE_URL';
+$SUPABASE_SERVICE_ROLE_KEY = 'YOUR_SERVICE_ROLE_KEY';
 
 // Log file for debugging
 $logFile = '${webhook.name.toLowerCase().replace(/\s+/g, '-')}-webhook-debug.log';
