@@ -1,0 +1,21 @@
+# Files to exclude from Netlify secrets scanning
+backups/**
+database_dump_data.sql
+*.php
+env.sample
+CONSOLE_ERRORS_FIXED.md
+WEBHOOK_SETUP_GUIDE.md
+check-users.js
+create-admin-user.js
+create-admin.js
+create-auth-users.js
+create-storage-buckets-with-service-role.js
+fix-admin-user.js
+fix-user-profile.js
+quick-fix.js
+simple-auth-fix.js
+sync-users-to-auth.js
+wordpress-webhook.html
+dist/**
+public/api/**
+

@@ -8,6 +8,7 @@ import { LoginDialog } from '@/components/components/LoginDialog';
 import { ModuleList } from '@/components/components/ModuleList';
 import { Loader2 } from 'lucide-react';
 import { LoginPageSkeleton } from '@/components/ui/skeleton-loader';
+import SplashCursor from '@/components/ui/SplashCursor';
 
 export default function NewLoginPageIntegrated() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,6 +90,7 @@ export default function NewLoginPageIntegrated() {
 
   return (
     <div className="new-login-theme min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <SplashCursor />
       <Header searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       
       <div className="container mx-auto px-8 max-w-[1600px] py-[100px]">
