@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ApiService } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -64,6 +65,7 @@ interface AnalyticsData {
 
 const StudentAnalytics = () => {
   const { toast } = useToast();
+  const { selectedAcademicYear } = useAcademicYear();
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [countryCoordinates, setCountryCoordinates] = useState<{ [country: string]: { lat: number; lng: number } }>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -71,13 +73,13 @@ const StudentAnalytics = () => {
 
   useEffect(() => {
     fetchAnalyticsData();
-  }, []);
+  }, [selectedAcademicYear]);
 
   const fetchAnalyticsData = async () => {
     try {
       setIsLoading(true);
       const [analytics, coordinates] = await Promise.all([
-        ApiService.getStudentAnalytics(),
+        ApiService.getStudentAnalytics(selectedAcademicYear),
         ApiService.getCountryCoordinates()
       ]);
       

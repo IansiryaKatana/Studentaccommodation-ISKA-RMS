@@ -62,6 +62,7 @@ export interface Lead {
   room_grade_preference_id?: string;
   duration_type_preference_id?: string;
   estimated_revenue?: number;
+  academic_year?: string; // Added for academic year isolation
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -209,6 +210,7 @@ export interface Reservation {
   discount_amount: number;
   balance_due: number;
   notes?: string;
+  academic_year?: string;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -253,6 +255,7 @@ export interface CreateReservationData {
   discount_amount: number;
   balance_due: number;
   notes?: string;
+  academic_year?: string;
   created_by: string;
 }
 
@@ -344,6 +347,7 @@ export interface Invoice {
   xero_invoice_id?: string;
   xero_exported_at?: string;
   xero_export_status: 'pending' | 'exported' | 'failed';
+  academic_year?: string; // Added for academic year isolation
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -361,6 +365,7 @@ export interface Payment {
   xero_payment_id?: string;
   xero_exported_at?: string;
   xero_export_status: 'pending' | 'exported' | 'failed';
+  academic_year?: string; // Added for academic year isolation
   created_by: string;
   created_at: string;
   invoice?: {
@@ -537,8 +542,64 @@ export interface Branding {
   font_family: string;
   dashboard_title: string;
   dashboard_subtitle: string;
+  currency?: string;
+  timezone?: string;
+  academic_year_start_month?: number;
+  academic_year_start_day?: number;
+  academic_year_end_month?: number;
+  academic_year_end_day?: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface AcademicYear {
+  id: string;
+  name: string; // "2024/2025", "2025/2026", "Fall 2024", etc.
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  is_current: boolean;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StudioOccupancy {
+  id: string;
+  studio_id: string;
+  academic_year: string;
+  student_id?: string;
+  status: 'occupied' | 'vacant' | 'maintenance';
+  check_in_date?: string;
+  check_out_date?: string;
+  created_at: string;
+  updated_at: string;
+  // Related data
+  studio?: Studio;
+  student?: Student;
+}
+
+export interface RebookingRecord {
+  id: string;
+  original_student_id: string;
+  new_student_id?: string;
+  current_academic_year: string;
+  new_academic_year: string;
+  studio_id: string;
+  duration_id: string;
+  installment_plan_id?: string;
+  deposit_amount: number;
+  deposit_paid: boolean;
+  stripe_payment_intent_id?: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  created_at: string;
+  updated_at: string;
+  // Related data
+  original_student?: Student;
+  new_student?: Student;
+  studio?: Studio;
+  duration?: Duration;
+  installment_plan?: InstallmentPlan;
 }
 
 export interface StudentAgreement {
@@ -579,6 +640,7 @@ export interface CleaningTask {
   id: string;
   studio_id: string;
   cleaner_id?: string;
+  reservation_id?: string; // Foreign key to reservations table
   scheduled_date: string;
   scheduled_time: string;
   estimated_duration: number; // in minutes
@@ -586,6 +648,7 @@ export interface CleaningTask {
   notes?: string;
   completed_at?: string;
   verified_by?: string;
+  academic_year?: string;
   created_by: string;
   created_at: string;
 }
@@ -600,6 +663,23 @@ export interface CleaningTaskWithDetails extends CleaningTask {
 // =====================================================
 
 export class ApiService {
+  // Helper method to get current academic year from context
+  private static getCurrentAcademicYearFromContext(): string {
+    // Try to get from localStorage (set by AcademicYearContext)
+    const storedAcademicYear = localStorage.getItem('selectedAcademicYear');
+    if (storedAcademicYear) {
+      return storedAcademicYear;
+    }
+    // Default fallback
+    return '2025/2026';
+  }
+
+  // Helper method to get deposit amount from installment plan
+  private static getDepositAmount(installmentPlanId?: string, defaultAmount: number = 99): number {
+    // This will be replaced with actual installment plan lookup
+    return defaultAmount;
+  }
+
   // User methods
   static async getUsers(): Promise<User[]> {
     const { data, error } = await supabase
@@ -700,8 +780,8 @@ export class ApiService {
   }
 
   // Lead methods
-  static async getLeads(): Promise<Lead[]> {
-    const { data, error } = await supabase
+  static async getLeads(academicYear?: string): Promise<Lead[]> {
+    let query = supabase
       .from('leads')
       .select(`
         *,
@@ -711,6 +791,12 @@ export class ApiService {
         duration_type_preference:lead_duration_types(name)
       `)
       .order('created_at', { ascending: false });
+
+    if (academicYear && academicYear !== 'all') {
+      query = query.eq('academic_year', academicYear);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     return data || [];
@@ -852,9 +938,15 @@ export class ApiService {
   }
 
   static async createLead(leadData: Omit<Lead, 'id' | 'created_at' | 'updated_at'>): Promise<Lead> {
+    // Auto-populate academic_year if not provided
+    const dataWithAcademicYear = {
+      ...leadData,
+      academic_year: leadData.academic_year || this.getCurrentAcademicYearFromContext()
+    };
+
     const { data, error } = await supabase
       .from('leads')
-      .insert(leadData)
+      .insert(dataWithAcademicYear)
       .select()
       .single();
 
@@ -918,9 +1010,14 @@ export class ApiService {
   }
 
   static async createViewingBooking(bookingData: Omit<ViewingBooking, 'id' | 'created_at' | 'updated_at'>): Promise<ViewingBooking> {
+    const stamped = {
+      ...bookingData,
+      academic_year: (bookingData as any).academic_year || this.getCurrentAcademicYearFromContext()
+    } as any;
+
     const { data, error } = await supabase
       .from('viewing_bookings')
-      .insert(bookingData)
+      .insert(stamped)
       .select()
       .single();
 
@@ -1004,7 +1101,7 @@ export class ApiService {
   }
 
   // Duration methods
-  static async getDurations(type?: 'student' | 'tourist'): Promise<Duration[]> {
+  static async getDurations(type?: 'student' | 'tourist', academicYear?: string): Promise<Duration[]> {
     let query = supabase
       .from('durations')
       .select('*')
@@ -1012,6 +1109,11 @@ export class ApiService {
 
     if (type) {
       query = query.eq('duration_type', type);
+    }
+
+    // Filter by academic year if provided
+    if (academicYear && academicYear !== 'all') {
+      query = query.eq('academic_year', academicYear);
     }
 
     const { data, error } = await query;
@@ -1060,6 +1162,107 @@ export class ApiService {
       .eq('id', id);
 
     if (error) throw error;
+  }
+
+  // Academic Year methods
+  static async getAcademicYears(): Promise<AcademicYear[]> {
+    const { data, error } = await supabase
+      .from('academic_years')
+      .select('*')
+      .order('start_date', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async getCurrentAcademicYear(): Promise<AcademicYear | null> {
+    const { data, error } = await supabase
+      .from('academic_years')
+      .select('*')
+      .eq('is_current', true)
+      .eq('is_active', true)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows returned
+    return data;
+  }
+
+  static async getAcademicYearById(id: string): Promise<AcademicYear | null> {
+    const { data, error } = await supabase
+      .from('academic_years')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  }
+
+  static async createAcademicYear(academicYearData: Omit<AcademicYear, 'id' | 'created_at' | 'updated_at'>): Promise<AcademicYear> {
+    // If setting as current, first unset any existing current academic year
+    if (academicYearData.is_current) {
+      await supabase
+        .from('academic_years')
+        .update({ is_current: false })
+        .eq('is_current', true);
+    }
+
+    const { data, error } = await supabase
+      .from('academic_years')
+      .insert(academicYearData)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async updateAcademicYear(id: string, updates: Partial<AcademicYear>): Promise<AcademicYear> {
+    // If setting as current, first unset any existing current academic year
+    if (updates.is_current) {
+      await supabase
+        .from('academic_years')
+        .update({ is_current: false })
+        .eq('is_current', true);
+    }
+
+    const { data, error } = await supabase
+      .from('academic_years')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async deleteAcademicYear(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('academic_years')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  static async setCurrentAcademicYear(id: string): Promise<AcademicYear> {
+    // First unset any existing current academic year
+    await supabase
+      .from('academic_years')
+      .update({ is_current: false })
+      .eq('is_current', true);
+
+    // Set the new current academic year
+    const { data, error } = await supabase
+      .from('academic_years')
+      .update({ is_current: true })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   }
 
   // Studio methods
@@ -1119,14 +1322,92 @@ export class ApiService {
 
 
   // Reservation methods
-  static async getReservations(): Promise<Reservation[]> {
-    const { data, error } = await supabase
+  static async getReservations(academicYear?: string): Promise<Reservation[]> {
+    let query = supabase
       .from('reservations')
       .select('*')
       .order('created_at', { ascending: false });
 
+    // Filter by academic year if provided
+    if (academicYear && academicYear !== 'all') {
+      query = query.eq('academic_year', academicYear);
+    }
+
+    const { data, error } = await query;
+
     if (error) throw error;
     return data || [];
+  }
+
+  // Get recent reservations with full details for overview display
+  static async getRecentReservations(options: { 
+    academicYear?: string; 
+    limit?: number; 
+    type?: 'student' | 'tourist' | 'all' 
+  } = {}): Promise<any[]> {
+    try {
+      let query = supabase
+        .from('reservations')
+        .select(`
+          *,
+          studio:studios(
+            studio_number,
+            floor,
+            room_grade:room_grades(name)
+          ),
+          student:students(
+            user:users(first_name, last_name)
+          ),
+          duration:durations(name, weeks_count)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(options.limit || 10);
+
+      // Filter by academic year if provided
+      if (options.academicYear && options.academicYear !== 'all') {
+        query = query.eq('academic_year', options.academicYear);
+      }
+
+      // Filter by type if provided
+      if (options.type && options.type !== 'all') {
+        query = query.eq('type', options.type);
+      }
+
+      const { data: reservations, error } = await query;
+      if (error) throw error;
+
+      // Get tourist data separately for reservations with tourist_id
+      const touristReservations = reservations?.filter(r => r.tourist_id) || [];
+      const touristIds = touristReservations.map(r => r.tourist_id);
+      
+      let tourists: any[] = [];
+      if (touristIds.length > 0) {
+        const { data: touristData, error: touristError } = await supabase
+          .from('tourist_profiles')
+          .select('*')
+          .in('id', touristIds);
+        
+        if (!touristError && touristData) {
+          tourists = touristData;
+        }
+      }
+
+      // Add tourist data to reservations
+      const reservationsWithTourists = (reservations || []).map(reservation => {
+        if (reservation.tourist_id) {
+          const tourist = tourists.find(t => t.id === reservation.tourist_id);
+          if (tourist) {
+            reservation.tourist = tourist;
+          }
+        }
+        return reservation;
+      });
+
+      return reservationsWithTourists;
+    } catch (error) {
+      console.error('Error fetching recent reservations:', error);
+      throw error;
+    }
   }
 
   static async getReservationById(id: string): Promise<(Reservation & { studio?: Studio }) | null> {
@@ -1165,13 +1446,50 @@ export class ApiService {
   }
 
   static async createReservation(reservationData: Omit<Reservation, 'id' | 'created_at' | 'updated_at'>): Promise<Reservation> {
+    // Auto-populate academic_year if not provided
+    const dataWithAcademicYear = {
+      ...reservationData,
+      academic_year: reservationData.academic_year || this.getCurrentAcademicYearFromContext()
+    };
+
     const { data, error } = await supabase
       .from('reservations')
-      .insert(reservationData)
+      .insert(dataWithAcademicYear)
       .select()
       .single();
 
     if (error) throw error;
+
+    // Update studio status to occupied when reservation is created (confirmed or checked_in)
+    if (data.status === 'confirmed' || data.status === 'checked_in') {
+      try {
+        await this.updateStudio(data.studio_id, { status: 'occupied' });
+        console.log(`Studio ${data.studio_id} set to occupied due to new reservation ${data.id}`);
+        
+        // Dispatch event to notify components of studio status change
+        window.dispatchEvent(new CustomEvent('studioStatusUpdated', {
+          detail: { studioId: data.studio_id, newStatus: 'occupied' }
+        }));
+      } catch (studioError) {
+        console.error('Error updating studio status:', studioError);
+        // Don't throw error - allow reservation to be created even if studio update fails
+      }
+    }
+
+    // Create cleaning task for check-out (scheduled for check-out date)
+    try {
+      await this.createReservationCleaningTask(data.id, dataWithAcademicYear.created_by || 'system');
+      console.log(`Cleaning task created for reservation ${data.id}`);
+    } catch (cleaningError) {
+      console.error('Error creating cleaning task:', cleaningError);
+      // Don't throw error - allow reservation to be created even if cleaning task creation fails
+    }
+
+    // Dispatch event to notify components of new reservation
+    window.dispatchEvent(new CustomEvent('newReservationCreated', {
+      detail: { reservation: data }
+    }));
+
     return data;
   }
 
@@ -1278,13 +1596,20 @@ export class ApiService {
     }
   }
 
-  static async getReservationsByStudioId(studioId: string): Promise<ReservationWithDetails[]> {
+  static async getReservationsByStudioId(studioId: string, academicYear?: string): Promise<ReservationWithDetails[]> {
     // Get reservations first
-    const { data: reservations, error } = await supabase
+    let query = supabase
       .from('reservations')
       .select('*')
       .eq('studio_id', studioId)
       .order('created_at', { ascending: false });
+
+    // Filter by academic year if provided
+    if (academicYear && academicYear !== 'all') {
+      query = query.eq('academic_year', academicYear);
+    }
+
+    const { data: reservations, error } = await query;
 
     if (error) throw error;
 
@@ -1424,13 +1749,20 @@ export class ApiService {
   }
 
   // Invoice methods
-  static async getInvoices(): Promise<(Invoice & { reservation?: Reservation })[]> {
+  static async getInvoices(academicYear?: string): Promise<(Invoice & { reservation?: Reservation })[]> {
     try {
       // First get all invoices
-      const { data: invoices, error: invoicesError } = await supabase
+      let query = supabase
         .from('invoices')
         .select('*')
         .order('created_at', { ascending: false });
+
+      // Filter by academic year if provided
+      if (academicYear && academicYear !== 'all') {
+        query = query.eq('academic_year', academicYear);
+      }
+
+      const { data: invoices, error: invoicesError } = await query;
 
       if (invoicesError) throw invoicesError;
 
@@ -1484,9 +1816,13 @@ export class ApiService {
   }
 
   static async createInvoice(invoiceData: Omit<Invoice, 'id' | 'created_at' | 'updated_at'>): Promise<Invoice> {
+    const payload = {
+      ...invoiceData,
+      academic_year: (invoiceData as any).academic_year || this.getCurrentAcademicYearFromContext(),
+    };
     const { data, error } = await supabase
       .from('invoices')
-      .insert(invoiceData)
+      .insert(payload)
       .select()
       .single();
 
@@ -1516,8 +1852,8 @@ export class ApiService {
   }
 
   // Payment methods
-  static async getPayments(): Promise<Payment[]> {
-    const { data, error } = await supabase
+  static async getPayments(academicYear?: string): Promise<Payment[]> {
+    let query = supabase
       .from('payments')
       .select(`
         *,
@@ -1527,10 +1863,17 @@ export class ApiService {
           total_amount,
           status,
           student_id,
-          reservation_id
+          reservation_id,
+          academic_year
         )
       `)
       .order('created_at', { ascending: false });
+
+    if (academicYear && academicYear !== 'all') {
+      query = query.eq('invoice.academic_year', academicYear);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     return data || [];
@@ -1548,9 +1891,13 @@ export class ApiService {
   }
 
   static async createPayment(paymentData: Omit<Payment, 'id' | 'created_at'>): Promise<Payment> {
+    const payload = {
+      ...paymentData,
+      academic_year: (paymentData as any).academic_year || this.getCurrentAcademicYearFromContext(),
+    };
     const { data, error } = await supabase
       .from('payments')
-      .insert(paymentData)
+      .insert(payload)
       .select()
       .single();
 
@@ -2004,137 +2351,181 @@ export class ApiService {
   // STUDIO METHODS
   // =====================================================
 
-  static async getStudiosWithDetails(): Promise<any[]> {
-    const { data: studios, error } = await supabase
-      .from('studios')
-      .select(`
-        *,
-        room_grade:room_grades(*)
-      `)
-      .order('studio_number', { ascending: true });
+  static async getStudiosWithDetails(academicYear?: string): Promise<any[]> {
+    try {
+      // Get all studios with room grades in a single query
+      const { data: studios, error: studiosError } = await supabase
+        .from('studios')
+        .select(`
+          *,
+          room_grade:room_grades(*)
+        `)
+        .order('studio_number', { ascending: true });
 
-    if (error) throw error;
-    
-    // For each studio, get current reservation information and occupancy stats
-    const studiosWithReservations = await Promise.all(
-      (studios || []).map(async (studio) => {
-        try {
-          // Get current reservation for this studio
-          const { data: reservation, error: reservationError } = await supabase
-            .from('reservations')
-            .select('*')
-            .eq('studio_id', studio.id)
-            .or('status.eq.pending,status.eq.confirmed,status.eq.checked_in')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+      if (studiosError) throw studiosError;
+      if (!studios || studios.length === 0) return [];
 
-          // If reservation exists, fetch student or tourist data separately
-          if (reservation && !reservationError) {
-            if (reservation.type === 'student' && reservation.student_id) {
-              // Fetch student data
-              const { data: student, error: studentError } = await supabase
-                .from('students')
-                .select(`
-                  first_name,
-                  last_name,
-                  email,
-                  user:users(first_name, last_name, email)
-                `)
-                .eq('id', reservation.student_id)
-                .single();
+      // Get current reservations for all studios (without tourist join to avoid FK issues)
+      let reservationsQuery = supabase
+        .from('reservations')
+        .select(`
+          *,
+          student:students(
+            first_name,
+            last_name,
+            email,
+            user:users(first_name, last_name, email)
+          )
+        `)
+        .or('status.eq.pending,status.eq.confirmed,status.eq.checked_in')
+        .order('created_at', { ascending: false });
 
-              if (!studentError && student) {
-                reservation.student = student;
-              }
-            } else if (reservation.type === 'tourist' && reservation.tourist_id) {
-              // Fetch tourist data
-              const { data: tourist, error: touristError } = await supabase
-                .from('tourist_profiles')
-                .select('first_name, last_name, email')
-                .eq('id', reservation.tourist_id)
-                .single();
+      // Filter by academic year if provided
+      if (academicYear && academicYear !== 'all') {
+        reservationsQuery = reservationsQuery.eq('academic_year', academicYear);
+      }
 
-              if (!touristError && tourist) {
-                reservation.tourist = tourist;
-              }
-            }
-          }
+      const { data: allReservations, error: reservationsError } = await reservationsQuery;
+      if (reservationsError) throw reservationsError;
 
-          // Calculate occupancy stats for the last year
-          const oneYearAgo = new Date();
-          oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-          
-          const { data: allReservations, error: statsError } = await supabase
-            .from('reservations')
-            .select('check_in_date, check_out_date, total_amount')
-            .eq('studio_id', studio.id)
-            .gte('check_in_date', oneYearAgo.toISOString().split('T')[0]);
-
-          // Calculate occupancy statistics
-          let totalDays = 365;
-          let occupiedDays = 0;
-          let totalRevenue = 0;
-          let totalOccupiedDays = 0;
-
-          if (allReservations && !statsError) {
-            allReservations.forEach(reservation => {
-              const checkIn = new Date(reservation.check_in_date);
-              const checkOut = new Date(reservation.check_out_date);
-              const daysOccupied = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
-              
-              // Only count days within the last year
-              const yearStart = new Date(oneYearAgo);
-              const yearEnd = new Date();
-              
-              const effectiveCheckIn = checkIn < yearStart ? yearStart : checkIn;
-              const effectiveCheckOut = checkOut > yearEnd ? yearEnd : checkOut;
-              
-              if (effectiveCheckOut > effectiveCheckIn) {
-                const effectiveDays = Math.ceil((effectiveCheckOut.getTime() - effectiveCheckIn.getTime()) / (1000 * 60 * 60 * 24));
-                occupiedDays += effectiveDays;
-                totalOccupiedDays += daysOccupied;
-                totalRevenue += reservation.total_amount || 0;
-              }
-            });
-          }
-
-          const occupancyRate = totalDays > 0 ? (occupiedDays / totalDays) * 100 : 0;
-          const averageDailyRate = totalOccupiedDays > 0 ? totalRevenue / totalOccupiedDays : 0;
-
-          if (reservationError && reservationError.code !== 'PGRST116') {
-            console.error(`Error fetching reservation for studio ${studio.id}:`, reservationError);
-          }
-
-          return {
-            ...studio,
-            current_reservation: reservation || null,
-            occupancy_stats: {
-              total_days: totalDays,
-              occupied_days: occupiedDays,
-              occupancy_rate: occupancyRate,
-              total_revenue: totalRevenue,
-              average_daily_rate: averageDailyRate
-            }
-          };
-        } catch (error) {
-          console.error(`Error processing studio ${studio.id}:`, error);
-          return {
-            ...studio,
-            current_reservation: null,
-            occupancy_stats: {
-              total_days: 365,
-              occupied_days: 0,
-              occupancy_rate: 0,
-              total_revenue: 0,
-              average_daily_rate: 0
-            }
-          };
+      // Get tourist data separately for reservations with tourist_id
+      const touristReservations = allReservations?.filter(r => r.tourist_id) || [];
+      const touristIds = touristReservations.map(r => r.tourist_id);
+      
+      let tourists: any[] = [];
+      if (touristIds.length > 0) {
+        const { data: touristData, error: touristError } = await supabase
+          .from('tourist_profiles')
+          .select('*')
+          .in('id', touristIds);
+        
+        if (!touristError && touristData) {
+          tourists = touristData;
         }
-      })
-    );
+      }
 
-    return studiosWithReservations;
+      // Add tourist data to reservations
+      const reservationsWithTourists = (allReservations || []).map(reservation => {
+        if (reservation.tourist_id) {
+          const tourist = tourists.find(t => t.id === reservation.tourist_id);
+          if (tourist) {
+            reservation.tourist = tourist;
+          }
+        }
+        return reservation;
+      });
+
+      // Group reservations by studio_id and get the most recent one for each studio
+      const currentReservationsByStudio = new Map();
+      reservationsWithTourists.forEach(reservation => {
+        if (!currentReservationsByStudio.has(reservation.studio_id)) {
+          currentReservationsByStudio.set(reservation.studio_id, reservation);
+        }
+      });
+
+      // Get students assigned to studios (for student bookings that don't use reservations)
+      let studentsQuery = supabase
+        .from('students')
+        .select('id, first_name, last_name, email, studio_id, academic_year')
+        .not('studio_id', 'is', null);
+
+      // Filter by academic year if provided
+      if (academicYear && academicYear !== 'all') {
+        studentsQuery = studentsQuery.eq('academic_year', academicYear);
+      }
+
+      const { data: assignedStudents, error: studentsError } = await studentsQuery;
+      if (studentsError) console.error('Error fetching assigned students:', studentsError);
+
+      // Group students by studio_id
+      const studentsByStudio = new Map();
+      (assignedStudents || []).forEach(student => {
+        if (!studentsByStudio.has(student.studio_id)) {
+          studentsByStudio.set(student.studio_id, []);
+        }
+        studentsByStudio.get(student.studio_id).push(student);
+      });
+
+      // Get occupancy stats for all studios in a single query (last year)
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      
+      let statsQuery = supabase
+        .from('reservations')
+        .select('studio_id, check_in_date, check_out_date, total_amount')
+        .gte('check_in_date', oneYearAgo.toISOString().split('T')[0]);
+
+      // Filter by academic year if provided
+      if (academicYear && academicYear !== 'all') {
+        statsQuery = statsQuery.eq('academic_year', academicYear);
+      }
+
+      const { data: statsReservations, error: statsError } = await statsQuery;
+      if (statsError) throw statsError;
+
+      // Group stats by studio_id
+      const statsByStudio = new Map();
+      (statsReservations || []).forEach(reservation => {
+        if (!statsByStudio.has(reservation.studio_id)) {
+          statsByStudio.set(reservation.studio_id, []);
+        }
+        statsByStudio.get(reservation.studio_id).push(reservation);
+      });
+
+      // Combine all data
+      const studiosWithDetails = studios.map(studio => {
+        const currentReservation = currentReservationsByStudio.get(studio.id) || null;
+        const assignedStudents = studentsByStudio.get(studio.id) || [];
+        const studioStats = statsByStudio.get(studio.id) || [];
+
+        // Calculate occupancy statistics
+        let totalDays = 365;
+        let occupiedDays = 0;
+        let totalRevenue = 0;
+        let totalOccupiedDays = 0;
+
+        studioStats.forEach(reservation => {
+          const checkIn = new Date(reservation.check_in_date);
+          const checkOut = new Date(reservation.check_out_date);
+          const daysOccupied = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+          
+          // Only count days within the last year
+          const yearStart = new Date(oneYearAgo);
+          const yearEnd = new Date();
+          
+          const effectiveCheckIn = checkIn < yearStart ? yearStart : checkIn;
+          const effectiveCheckOut = checkOut > yearEnd ? yearEnd : checkOut;
+          
+          if (effectiveCheckOut > effectiveCheckIn) {
+            const effectiveDays = Math.ceil((effectiveCheckOut.getTime() - effectiveCheckIn.getTime()) / (1000 * 60 * 60 * 24));
+            occupiedDays += effectiveDays;
+            totalOccupiedDays += daysOccupied;
+            totalRevenue += reservation.total_amount || 0;
+          }
+        });
+
+        const occupancyRate = totalDays > 0 ? (occupiedDays / totalDays) * 100 : 0;
+        const averageDailyRate = totalOccupiedDays > 0 ? totalRevenue / totalOccupiedDays : 0;
+
+        return {
+          ...studio,
+          current_reservation: currentReservation,
+          assigned_students: assignedStudents, // Include students assigned to this studio
+          occupancy_stats: {
+            total_days: totalDays,
+            occupied_days: occupiedDays,
+            occupancy_rate: occupancyRate,
+            total_revenue: totalRevenue,
+            average_daily_rate: averageDailyRate
+          }
+        };
+      });
+
+      return studiosWithDetails;
+    } catch (error) {
+      console.error('Error fetching studios with details:', error);
+      throw error;
+    }
   }
 
   // Fix studio statuses based on actual reservations (optimized version)
@@ -2256,6 +2647,278 @@ export class ApiService {
 
     if (error) throw error;
     return data;
+  }
+
+  // Studio Occupancy methods (per academic year)
+  static async getStudioOccupancy(academicYear?: string, forceRefresh: boolean = false): Promise<StudioOccupancy[]> {
+    let query = supabase
+      .from('studio_occupancy')
+      .select(`
+        *,
+        studio:studios(*),
+        student:students(*)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (academicYear && academicYear !== 'all') {
+      query = query.eq('academic_year', academicYear);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    
+    // Only populate if no data exists (not on every call)
+    if (academicYear && academicYear !== 'all' && (!data || data.length === 0)) {
+      console.log(`No occupancy data found for ${academicYear}, populating from reservations...`);
+      await this.populateStudioOccupancyFromReservations(academicYear);
+      
+      // Fetch the newly populated data
+      const { data: newData, error: newError } = await query;
+      if (newError) throw newError;
+      return newData || [];
+    }
+    
+    // Only force refresh if explicitly requested
+    if (forceRefresh && academicYear && academicYear !== 'all') {
+      console.log(`Force refreshing occupancy data for ${academicYear}...`);
+      await this.populateStudioOccupancyFromReservations(academicYear);
+      
+      // Fetch the refreshed data
+      const { data: refreshedData, error: refreshError } = await query;
+      if (refreshError) throw refreshError;
+      return refreshedData || [];
+    }
+    
+    return data || [];
+  }
+
+  // Populate studio occupancy based on existing reservations for an academic year
+  static async populateStudioOccupancyFromReservations(academicYear: string): Promise<void> {
+    try {
+      console.log(`🔄 Populating studio occupancy for academic year ${academicYear}...`);
+      
+      // Get all reservations for this academic year
+      const { data: reservations, error: reservationsError } = await supabase
+        .from('reservations')
+        .select(`
+          *,
+          student:students(*)
+        `)
+        .eq('academic_year', academicYear)
+        .in('status', ['confirmed', 'checked_in']); // Only active reservations
+
+      if (reservationsError) throw reservationsError;
+
+      // Get all studios to ensure we have occupancy records for all studios
+      const { data: studios, error: studiosError } = await supabase
+        .from('studios')
+        .select('id');
+
+      if (studiosError) throw studiosError;
+
+      // Prepare batch operations for better performance
+      const occupancyRecords = [];
+      
+      for (const studio of studios || []) {
+        // Find active reservation for this studio in this academic year
+        const activeReservation = reservations?.find(r => 
+          r.studio_id === studio.id && 
+          (r.status === 'confirmed' || r.status === 'checked_in')
+        );
+
+        if (activeReservation) {
+          // Studio is occupied
+          occupancyRecords.push({
+            studio_id: studio.id,
+            academic_year: academicYear,
+            student_id: activeReservation.student_id,
+            status: 'occupied',
+            check_in_date: activeReservation.check_in_date,
+            check_out_date: activeReservation.check_out_date
+          });
+        } else {
+          // Studio is available
+          occupancyRecords.push({
+            studio_id: studio.id,
+            academic_year: academicYear,
+            student_id: null,
+            status: 'available',
+            check_in_date: null,
+            check_out_date: null
+          });
+        }
+      }
+
+      // Batch upsert all records
+      if (occupancyRecords.length > 0) {
+        const { error: upsertError } = await supabase
+          .from('studio_occupancy')
+          .upsert(occupancyRecords, {
+            onConflict: 'studio_id,academic_year'
+          });
+
+        if (upsertError) {
+          console.error('Error batch upserting occupancy records:', upsertError);
+        } else {
+          console.log(`✅ Populated ${occupancyRecords.length} studio occupancy records for academic year ${academicYear}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error populating studio occupancy:', error);
+      // Don't throw - this is a background operation
+    }
+  }
+
+  // Force refresh occupancy data for an academic year (useful for manual updates)
+  static async refreshStudioOccupancy(academicYear: string): Promise<void> {
+    console.log(`🔄 Refreshing studio occupancy for academic year ${academicYear}...`);
+    await this.populateStudioOccupancyFromReservations(academicYear);
+  }
+
+  static async getStudioOccupancyByStudio(studioId: string, academicYear?: string): Promise<StudioOccupancy | null> {
+    let query = supabase
+      .from('studio_occupancy')
+      .select(`
+        *,
+        studio:studios(*),
+        student:students(*)
+      `)
+      .eq('studio_id', studioId);
+
+    if (academicYear && academicYear !== 'all') {
+      query = query.eq('academic_year', academicYear);
+    }
+
+    const { data, error } = await query.single();
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows returned
+    return data;
+  }
+
+  static async createStudioOccupancy(occupancyData: Omit<StudioOccupancy, 'id' | 'created_at' | 'updated_at'>): Promise<StudioOccupancy> {
+    const { data, error } = await supabase
+      .from('studio_occupancy')
+      .insert(occupancyData)
+      .select(`
+        *,
+        studio:studios(*),
+        student:students(*)
+      `)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async updateStudioOccupancy(id: string, updates: Partial<StudioOccupancy>): Promise<StudioOccupancy> {
+    const { data, error } = await supabase
+      .from('studio_occupancy')
+      .update(updates)
+      .eq('id', id)
+      .select(`
+        *,
+        studio:studios(*),
+        student:students(*)
+      `)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async deleteStudioOccupancy(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('studio_occupancy')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  // Rebooking methods
+  static async getRebookingRecords(academicYear?: string): Promise<RebookingRecord[]> {
+    let query = supabase
+      .from('rebooking_records')
+      .select(`
+        *,
+        original_student:students!original_student_id(*),
+        new_student:students!new_student_id(*),
+        studio:studios!studio_id(*),
+        duration:durations!duration_id(*),
+        installment_plan:installment_plans!installment_plan_id(*)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (academicYear && academicYear !== 'all') {
+      query = query.eq('new_academic_year', academicYear);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async getRebookingRecordById(id: string): Promise<RebookingRecord | null> {
+    const { data, error } = await supabase
+      .from('rebooking_records')
+      .select(`
+        *,
+        original_student:students!rebooking_records_original_student_id_fkey(*),
+        new_student:students!rebooking_records_new_student_id_fkey(*),
+        studio:studios(*),
+        duration:durations(*),
+        installment_plan:installment_plans(*)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  }
+
+  static async createRebookingRecord(rebookingData: Omit<RebookingRecord, 'id' | 'created_at' | 'updated_at'>): Promise<RebookingRecord> {
+    const { data, error } = await supabase
+      .from('rebooking_records')
+      .insert(rebookingData)
+      .select(`
+        *,
+        original_student:students!original_student_id(*),
+        new_student:students!new_student_id(*),
+        studio:studios!studio_id(*),
+        duration:durations!duration_id(*),
+        installment_plan:installment_plans!installment_plan_id(*)
+      `)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async updateRebookingRecord(id: string, updates: Partial<RebookingRecord>): Promise<RebookingRecord> {
+    const { data, error } = await supabase
+      .from('rebooking_records')
+      .update(updates)
+      .eq('id', id)
+      .select(`
+        *,
+        original_student:students!original_student_id(*),
+        new_student:students!new_student_id(*),
+        studio:studios!studio_id(*),
+        duration:durations!duration_id(*),
+        installment_plan:installment_plans!installment_plan_id(*)
+      `)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async deleteRebookingRecord(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('rebooking_records')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
   }
 
   // Update studio status to vacant
@@ -2407,8 +3070,22 @@ export class ApiService {
     return data || [];
   }
 
-  static async getCleaningTasks(): Promise<CleaningTaskWithDetails[]> {
+  static async createCleaner(cleanerData: { user_id: string; is_active?: boolean }): Promise<Cleaner> {
     const { data, error } = await supabase
+      .from('cleaners')
+      .insert({
+        user_id: cleanerData.user_id,
+        is_active: cleanerData.is_active ?? true
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async getCleaningTasks(academicYear?: string): Promise<CleaningTaskWithDetails[]> {
+    let query = supabase
       .from('cleaning_tasks')
       .select(`
         *,
@@ -2420,11 +3097,17 @@ export class ApiService {
       `)
       .order('scheduled_date', { ascending: true });
 
+    // Filter by academic year if provided
+    if (academicYear && academicYear !== 'all') {
+      query = query.eq('academic_year', academicYear);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return (data || []) as CleaningTaskWithDetails[];
   }
 
-  static async createCleaningTask(taskData: Omit<CleaningTask, 'id' | 'created_at'>): Promise<CleaningTask> {
+  static async createCleaningTask(taskData: Omit<CleaningTask, 'id' | 'created_at' | 'updated_at'>): Promise<CleaningTask> {
     try {
       // Check if a cleaning task already exists for this studio on this date
       const { data: existingTask, error: checkError } = await supabase
@@ -2453,15 +3136,22 @@ export class ApiService {
           notes: taskData.notes,
           completed_at: undefined,
           verified_by: undefined,
+          academic_year: taskData.academic_year || this.getCurrentAcademicYearFromContext(),
           created_by: taskData.created_by,
           created_at: new Date().toISOString()
         };
         return mockTask;
       }
 
+      // Add academic_year to task data
+      const taskDataWithAcademicYear = {
+        ...taskData,
+        academic_year: taskData.academic_year || this.getCurrentAcademicYearFromContext()
+      };
+
       const { data, error } = await supabase
         .from('cleaning_tasks')
-        .insert(taskData)
+        .insert(taskDataWithAcademicYear)
         .select()
         .single();
 
@@ -2488,6 +3178,12 @@ export class ApiService {
         }
         throw error;
       }
+      
+      // Dispatch real-time create event
+      window.dispatchEvent(new CustomEvent('cleaningTaskCreated', { 
+        detail: { task: data } 
+      }));
+      
       return data;
     } catch (error) {
       console.error('Error creating cleaning task:', error);
@@ -2519,6 +3215,12 @@ export class ApiService {
       .single();
 
     if (error) throw error;
+    
+    // Dispatch real-time update event
+    window.dispatchEvent(new CustomEvent('cleaningTaskUpdated', { 
+      detail: { taskId: id, updates, task: data } 
+    }));
+    
     return data;
   }
 
@@ -2529,10 +3231,15 @@ export class ApiService {
       .eq('id', id);
 
     if (error) throw error;
+    
+    // Dispatch real-time delete event
+    window.dispatchEvent(new CustomEvent('cleaningTaskDeleted', { 
+      detail: { taskId: id } 
+    }));
   }
 
-  static async getCleaningTasksByStudio(studioId: string): Promise<CleaningTaskWithDetails[]> {
-    const { data, error } = await supabase
+  static async getCleaningTasksByStudio(studioId: string, academicYear?: string): Promise<CleaningTaskWithDetails[]> {
+    let query = supabase
       .from('cleaning_tasks')
       .select(`
         *,
@@ -2545,12 +3252,18 @@ export class ApiService {
       .eq('studio_id', studioId)
       .order('scheduled_date', { ascending: true });
 
+    // Filter by academic year if provided
+    if (academicYear && academicYear !== 'all') {
+      query = query.eq('academic_year', academicYear);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return (data || []) as CleaningTaskWithDetails[];
   }
 
-  static async getCleaningTasksByDate(date: string): Promise<CleaningTaskWithDetails[]> {
-    const { data, error } = await supabase
+  static async getCleaningTasksByDate(date: string, academicYear?: string): Promise<CleaningTaskWithDetails[]> {
+    let query = supabase
       .from('cleaning_tasks')
       .select(`
         *,
@@ -2563,6 +3276,12 @@ export class ApiService {
       .eq('scheduled_date', date)
       .order('scheduled_time', { ascending: true });
 
+    // Filter by academic year if provided
+    if (academicYear && academicYear !== 'all') {
+      query = query.eq('academic_year', academicYear);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return (data || []) as CleaningTaskWithDetails[];
   }
@@ -2570,6 +3289,42 @@ export class ApiService {
   // =====================================================
   // CLEANING INTEGRATION METHODS
   // =====================================================
+
+  static async createReservationCleaningTask(reservationId: string, createdBy: string): Promise<CleaningTask> {
+    try {
+      // Get the reservation details
+      const reservation = await this.getReservationById(reservationId);
+      if (!reservation) {
+        throw new Error('Reservation not found');
+      }
+
+      // Get an available cleaner
+      const cleaners = await this.getCleaners();
+      const availableCleaner = cleaners.find(c => c.is_active);
+      if (!availableCleaner) {
+        throw new Error('No available cleaners found');
+      }
+
+      // Create cleaning task for check-out (scheduled for check-out date)
+      const cleaningTask = await this.createCleaningTask({
+        studio_id: reservation.studio_id,
+        cleaner_id: availableCleaner.id,
+        reservation_id: reservationId, // Link to the reservation
+        scheduled_date: reservation.check_out_date,
+        scheduled_time: '09:00:00', // Default to 9 AM
+        estimated_duration: 120, // 2 hours default
+        status: 'scheduled',
+        notes: `Check-out cleaning for reservation ${reservation.reservation_number}`,
+        academic_year: reservation.academic_year || this.getCurrentAcademicYearFromContext(),
+        created_by: createdBy
+      });
+
+      return cleaningTask;
+    } catch (error) {
+      console.error('Error creating reservation cleaning task:', error);
+      throw error;
+    }
+  }
 
   static async createCheckoutCleaningTask(reservationId: string, createdBy: string): Promise<CleaningTask> {
     try {
@@ -2590,11 +3345,13 @@ export class ApiService {
       const cleaningTask = await this.createCleaningTask({
         studio_id: reservation.studio_id,
         cleaner_id: availableCleaner.id,
+        reservation_id: reservationId, // Link to the reservation
         scheduled_date: reservation.check_out_date,
         scheduled_time: '09:00:00', // Default to 9 AM
         estimated_duration: 120, // 2 hours default
         status: 'scheduled',
         notes: `Check-out cleaning for reservation ${reservation.reservation_number}`,
+        academic_year: reservation.academic_year || this.getCurrentAcademicYearFromContext(),
         created_by: createdBy
       });
 
@@ -2789,9 +3546,9 @@ export class ApiService {
   // STUDENT METHODS
   // =====================================================
 
-    static async getStudents(): Promise<StudentWithUser[]> {
+    static async getStudents(academicYear?: string): Promise<StudentWithUser[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('students')
         .select(`
           *,
@@ -2799,6 +3556,12 @@ export class ApiService {
         `)
         .order('created_at', { ascending: false });
 
+      // Filter by academic year if provided
+      if (academicYear && academicYear !== 'all') {
+        query = query.eq('academic_year', academicYear);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       
       return data || [];
@@ -2809,7 +3572,7 @@ export class ApiService {
   }
 
   // Optimized method to get students with all details in one query
-  static async getStudentsWithDetails(options?: { page?: number; limit?: number }): Promise<any[]> {
+  static async getStudentsWithDetails(options?: { page?: number; limit?: number; academicYear?: string }): Promise<any[]> {
     try {
       let query = supabase
         .from('students')
@@ -2823,6 +3586,11 @@ export class ApiService {
           invoices:invoices(*)
         `)
         .order('created_at', { ascending: false });
+
+      // Filter by academic year if provided
+      if (options?.academicYear && options.academicYear !== 'all') {
+        query = query.eq('academic_year', options.academicYear);
+      }
 
       // Add pagination if specified
       if (options?.page !== undefined && options?.limit !== undefined) {
@@ -2928,9 +3696,15 @@ export class ApiService {
 
   static async createStudent(studentData: Omit<Student, 'id' | 'created_at' | 'updated_at'>): Promise<Student> {
     try {
+      // Auto-populate academic_year if not provided
+      const dataWithAcademicYear = {
+        ...studentData,
+        academic_year: studentData.academic_year || this.getCurrentAcademicYearFromContext()
+      };
+
       const { data, error } = await supabase
         .from('students')
-        .insert(studentData)
+        .insert(dataWithAcademicYear)
         .select()
         .single();
 
@@ -3210,12 +3984,19 @@ export class ApiService {
     }
   }
 
-  static async getAllMaintenanceRequests(): Promise<any[]> {
+  static async getAllMaintenanceRequests(academicYear?: string): Promise<any[]> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('maintenance_requests')
         .select('*')
         .order('created_at', { ascending: false });
+
+      // Filter by academic year if provided
+      if (academicYear && academicYear !== 'all') {
+        query = query.eq('academic_year', academicYear);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -3280,6 +4061,7 @@ export class ApiService {
           priority: requestData.priority,
           studio_id: studio_id,
           status: 'Pending',
+          academic_year: this.getCurrentAcademicYearFromContext(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -3317,13 +4099,19 @@ export class ApiService {
     }
   }
 
-  static async getNewMaintenanceRequestsCount(): Promise<number> {
+  static async getNewMaintenanceRequestsCount(academicYear?: string): Promise<number> {
     try {
       // Get count of pending maintenance requests (new requests)
-      const { count, error } = await supabase
+      let query = supabase
         .from('maintenance_requests')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'Pending');
+
+      if (academicYear) {
+        query = query.eq('academic_year', academicYear);
+      }
+
+      const { count, error } = await query;
 
       if (error) throw error;
       return count || 0;
@@ -3350,13 +4138,19 @@ export class ApiService {
   // EXPENSE METHODS
   // =====================================================
 
-  static async getExpenses(): Promise<Expense[]> {
+  static async getExpenses(academicYear?: string): Promise<Expense[]> {
     try {
       // First try the simple query without relationships
-      const { data: expenses, error: expensesError } = await supabase
+      let query = supabase
         .from('expenses')
         .select('*')
         .order('expense_date', { ascending: false });
+
+      if (academicYear && academicYear !== 'all') {
+        query = query.eq('academic_year', academicYear);
+      }
+
+      const { data: expenses, error: expensesError } = await query;
 
       if (expensesError) {
         // If table doesn't exist yet, return empty array
@@ -3481,6 +4275,7 @@ export class ApiService {
         .from('expenses')
         .insert({
           ...expenseData,
+          academic_year: (expenseData as any).academic_year || this.getCurrentAcademicYearFromContext(),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -3638,9 +4433,9 @@ export class ApiService {
     return data || [];
   }
 
-  static async getReservationByStudentId(studentId: string): Promise<Reservation | null> {
+  static async getReservationByStudentId(studentId: string, academicYear?: string): Promise<Reservation | null> {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('reservations')
         .select(`
           *,
@@ -3650,6 +4445,12 @@ export class ApiService {
         .eq('student_id', studentId)
         .order('created_at', { ascending: false })
         .limit(1);
+
+      if (academicYear && academicYear !== 'all') {
+        query = query.eq('academic_year', academicYear);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching reservation by student ID:', error);
@@ -3682,19 +4483,21 @@ export class ApiService {
     return data || [];
   }
 
-  static async getInvoicesByStudentId(studentId: string): Promise<Invoice[]> {
+  static async getInvoicesByStudentId(studentId: string, academicYear?: string): Promise<Invoice[]> {
     // Get invoices directly linked to student (for student bookings)
-    const { data: studentInvoices, error: studentError } = await supabase
+    let studentQuery = supabase
       .from('invoices')
       .select('*')
       .eq('student_id', studentId)
       .order('created_at', { ascending: false });
-
+    if (academicYear && academicYear !== 'all') {
+      studentQuery = studentQuery.eq('academic_year', academicYear);
+    }
+    const { data: studentInvoices, error: studentError } = await studentQuery;
     if (studentError) throw studentError;
     
     // Also get invoices through reservations (for tourist bookings that might be linked to students)
-    // Fix: Use proper join to avoid getting invoices from other students
-    const { data: reservationInvoices, error: reservationError } = await supabase
+    let reservationQuery = supabase
       .from('invoices')
       .select(`
         *,
@@ -3702,7 +4505,10 @@ export class ApiService {
       `)
       .eq('reservation.student_id', studentId)
       .order('created_at', { ascending: false });
-
+    if (academicYear && academicYear !== 'all') {
+      reservationQuery = reservationQuery.eq('academic_year', academicYear);
+    }
+    const { data: reservationInvoices, error: reservationError } = await reservationQuery;
     if (reservationError && reservationError.code !== 'PGRST116') throw reservationError;
     
     // Combine and deduplicate invoices
@@ -3956,11 +4762,12 @@ export class ApiService {
 
       console.log('Tourist profile created:', touristProfile);
 
-      // Create reservation with tourist_id and generated reservation number
+      // Create reservation with tourist_id, generated reservation number, and academic year
       const reservationWithTouristId = {
         ...reservationData.reservation,
         tourist_id: touristProfile.id,
-        reservation_number: reservationNumber
+        reservation_number: reservationNumber,
+        academic_year: reservationData.reservation.academic_year || this.getCurrentAcademicYearFromContext()
       };
 
       console.log('Creating reservation with data:', reservationWithTouristId);
@@ -4010,7 +4817,8 @@ export class ApiService {
             total_amount: reservationData.reservation.total_amount,
             due_date: reservation.check_in_date,
             status: 'pending',
-            created_by: reservationData.reservation.created_by
+            created_by: reservationData.reservation.created_by,
+            academic_year: reservationData.reservation.academic_year || this.getCurrentAcademicYearFromContext()
           })
           .select()
           .single();
@@ -4030,8 +4838,33 @@ export class ApiService {
 
       // Update studio status to occupied when tourist reservation is created
       if (reservation.status === 'confirmed' || reservation.status === 'checked_in') {
-        await this.updateStudio(reservation.studio_id, { status: 'occupied' });
+        try {
+          await this.updateStudio(reservation.studio_id, { status: 'occupied' });
+          console.log(`Studio ${reservation.studio_id} set to occupied due to new tourist reservation ${reservation.id}`);
+          
+          // Dispatch event to notify components of studio status change
+          window.dispatchEvent(new CustomEvent('studioStatusUpdated', {
+            detail: { studioId: reservation.studio_id, newStatus: 'occupied' }
+          }));
+        } catch (studioError) {
+          console.error('Error updating studio status:', studioError);
+          // Don't throw error - allow reservation to be created even if studio update fails
+        }
       }
+
+      // Create cleaning task for check-out (scheduled for check-out date)
+      try {
+        await this.createReservationCleaningTask(reservation.id, reservationData.reservation.created_by || 'system');
+        console.log(`Cleaning task created for tourist reservation ${reservation.id}`);
+      } catch (cleaningError) {
+        console.error('Error creating cleaning task for tourist reservation:', cleaningError);
+        // Don't throw error - allow reservation to be created even if cleaning task creation fails
+      }
+
+      // Dispatch event to notify components of new reservation
+      window.dispatchEvent(new CustomEvent('newReservationCreated', {
+        detail: { reservation }
+      }));
 
       return { touristProfile, reservation, invoice };
     } catch (error) {
@@ -5073,7 +5906,7 @@ export class ApiService {
   // ANALYTICS METHODS
   // =====================================================
 
-  static async getStudentAnalytics(): Promise<{
+  static async getStudentAnalytics(academicYear?: string): Promise<{
     ethnicity: { [key: string]: number };
     gender: { [key: string]: number };
     country: { [key: string]: number };
@@ -5086,7 +5919,7 @@ export class ApiService {
   }> {
     try {
       // Get all students with their related data
-      const { data: students, error: studentsError } = await supabase
+      let query = supabase
         .from('students')
         .select(`
           id,
@@ -5101,6 +5934,13 @@ export class ApiService {
           total_amount,
           user:users(is_active)
         `);
+
+      // Filter by academic year if provided
+      if (academicYear && academicYear !== 'all') {
+        query = query.eq('academic_year', academicYear);
+      }
+
+      const { data: students, error: studentsError } = await query;
 
       if (studentsError) throw studentsError;
 
@@ -5126,7 +5966,7 @@ export class ApiService {
       // Process each student
       students?.forEach(student => {
         // Only count active students
-        if (!student.user?.is_active) return;
+        if (!(student.user as any)?.is_active) return;
 
         // Ethnicity
         const ethnicityKey = student.ethnicity || 'Not Specified';
@@ -5171,7 +6011,7 @@ export class ApiService {
         duration,
         installmentPlans,
         countryRevenue,
-        totalStudents: students?.filter(s => s.user?.is_active).length || 0
+        totalStudents: students?.filter(s => (s.user as any)?.is_active).length || 0
       };
     } catch (error) {
       console.error('Error fetching student analytics:', error);
@@ -5791,6 +6631,140 @@ export class ApiService {
     });
 
     return deliveries;
+  }
+
+  // OTA Booking Statistics
+  static async getOTABookingStats(academicYear?: string): Promise<{
+    totalBookings: number;
+    activeBookings: number;
+    totalRevenue: number;
+    topBookingSource: string;
+    checkInsToday: number;
+    checkOutsToday: number;
+    revenueByMonth: Array<{month: string, revenue: number}>;
+    occupancyRate: number;
+  }> {
+    try {
+      // Get all tourist reservations for the academic year
+      let query = supabase
+        .from('reservations')
+        .select('*')
+        .eq('type', 'tourist')
+        .order('created_at', { ascending: false });
+
+      // Filter by academic year if provided
+      if (academicYear && academicYear !== 'all') {
+        query = query.eq('academic_year', academicYear);
+      }
+
+      const { data: reservations, error } = await query;
+
+      if (error) throw error;
+
+      const touristReservations = reservations || [];
+
+      // Calculate basic stats
+      const totalBookings = touristReservations.length;
+      const activeBookings = touristReservations.filter(r => 
+        r.status === 'checked_in' || r.status === 'confirmed'
+      ).length;
+
+      // Calculate total revenue
+      const totalRevenue = touristReservations.reduce((sum, reservation) => {
+        return sum + (reservation.total_amount || 0);
+      }, 0);
+
+      // Get booking sources for top source calculation
+      const bookingSourceIds = touristReservations
+        .map(r => r.booking_source_id)
+        .filter(Boolean);
+
+      let topBookingSource = 'N/A';
+      if (bookingSourceIds.length > 0) {
+        const { data: bookingSources } = await supabase
+          .from('tourist_booking_sources')
+          .select('id, name')
+          .in('id', bookingSourceIds);
+
+        if (bookingSources && bookingSources.length > 0) {
+          // Count occurrences of each booking source
+          const sourceCounts = bookingSourceIds.reduce((acc, id) => {
+            acc[id] = (acc[id] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+
+          // Find the most frequent booking source
+          const topSourceId = Object.keys(sourceCounts).reduce((a, b) => 
+            sourceCounts[a] > sourceCounts[b] ? a : b
+          );
+
+          const topSource = bookingSources.find(s => s.id === topSourceId);
+          topBookingSource = topSource?.name || 'N/A';
+        }
+      }
+
+      // Calculate check-ins and check-outs for today
+      const today = new Date().toISOString().split('T')[0];
+      const checkInsToday = touristReservations.filter(r => 
+        r.check_in_date === today
+      ).length;
+      const checkOutsToday = touristReservations.filter(r => 
+        r.check_out_date === today
+      ).length;
+
+      // Calculate revenue by month (last 6 months)
+      const revenueByMonth = [];
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        const monthKey = date.toISOString().slice(0, 7); // YYYY-MM format
+        
+        const monthRevenue = touristReservations
+          .filter(r => r.created_at.startsWith(monthKey))
+          .reduce((sum, r) => sum + (r.total_amount || 0), 0);
+
+        revenueByMonth.push({
+          month: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          revenue: monthRevenue
+        });
+      }
+
+      // Calculate occupancy rate (simplified - based on active bookings vs total studios)
+      let occupancyRate = 0;
+      try {
+        const studios = await this.getStudios();
+        const totalStudios = studios.length;
+        if (totalStudios > 0) {
+          occupancyRate = Math.round((activeBookings / totalStudios) * 100);
+        }
+      } catch (error) {
+        console.log('Could not calculate occupancy rate:', error);
+      }
+
+      return {
+        totalBookings,
+        activeBookings,
+        totalRevenue,
+        topBookingSource,
+        checkInsToday,
+        checkOutsToday,
+        revenueByMonth,
+        occupancyRate
+      };
+
+    } catch (error) {
+      console.error('Error fetching OTA booking stats:', error);
+      return {
+        totalBookings: 0,
+        activeBookings: 0,
+        totalRevenue: 0,
+        topBookingSource: 'N/A',
+        checkInsToday: 0,
+        checkOutsToday: 0,
+        revenueByMonth: [],
+        occupancyRate: 0
+      };
+    }
   }
 
 } 

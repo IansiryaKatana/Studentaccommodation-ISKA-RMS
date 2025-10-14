@@ -7,14 +7,13 @@ import {
   Settings, 
   Users, 
   Shield, 
-  Bell, 
-  Zap, 
   Database,
   ArrowRight,
   CheckCircle,
   AlertTriangle,
   Clock,
-  Palette
+  Palette,
+  Globe
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CardSkeleton, DashboardGridSkeleton } from '@/components/ui/skeleton';
@@ -50,28 +49,12 @@ const SettingsOverview = () => {
       stats: { configured: 18, total: 24 }
     },
     {
-      title: 'Security Settings',
-      description: 'Manage authentication, authorization, and security policies',
-      icon: Shield,
-      path: '/settings/security',
-      color: 'bg-red-500',
-      stats: { policies: 12, active: 10 }
-    },
-    {
-      title: 'Notifications',
-      description: 'Configure email, SMS, and push notification settings',
-      icon: Bell,
-      path: '/settings/notifications',
-      color: 'bg-yellow-500',
-      stats: { channels: 4, enabled: 3 }
-    },
-    {
-      title: 'Integrations',
-      description: 'Manage third-party integrations and API connections',
-      icon: Zap,
-      path: '/settings/integrations',
-      color: 'bg-purple-500',
-      stats: { connected: 6, available: 12 }
+      title: 'Webhook Management',
+      description: 'Create and manage WPForms webhooks for automated data processing',
+      icon: Globe,
+      path: '/settings/webhooks',
+      color: 'bg-teal-500',
+      stats: { active: 2, total: 3, working: 2 }
     },
     {
       title: 'Branding Management',
@@ -191,6 +174,16 @@ const SettingsOverview = () => {
                     <Badge variant="secondary">
                       {setting.stats.connected} Connected
                     </Badge>
+                  )}
+                  {setting.title === 'Webhook Management' && (
+                    <>
+                      <Badge variant="secondary">
+                        {setting.stats.active}/{setting.stats.total} Active
+                      </Badge>
+                      <Badge variant="default" className="bg-green-500 text-white">
+                        {setting.stats.working} Working
+                      </Badge>
+                    </>
                   )}
                   {setting.title === 'System Status' && (
                     <Badge variant={setting.stats.healthy ? 'default' : 'destructive'}>

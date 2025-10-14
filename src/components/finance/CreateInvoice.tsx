@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Plus, Trash2, Save, FileText, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ApiService } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface InvoiceItem {
   id: string;
@@ -44,10 +46,12 @@ const CreateInvoice: React.FC = () => {
   // Fetch form data
   const [reservations, setReservations] = useState<any[]>([]);
 
+  const { selectedAcademicYear } = useAcademicYear();
+
   useEffect(() => {
     const fetchReservations = async () => {
       try {
-        const reservationsData = await ApiService.getReservations();
+        const reservationsData = await ApiService.getReservations(selectedAcademicYear);
         setReservations(reservationsData);
       } catch (error) {
         console.error('Error fetching reservations:', error);
@@ -60,7 +64,7 @@ const CreateInvoice: React.FC = () => {
     };
 
     fetchReservations();
-  }, [toast]);
+  }, [toast, selectedAcademicYear]);
 
   const addItem = () => {
     const newItem: InvoiceItem = {
@@ -123,7 +127,8 @@ const CreateInvoice: React.FC = () => {
         total_amount: totalAmount,
         due_date: invoiceData.dueDate,
         status: 'pending' as const,
-        created_by: 'current-user-id' // This should come from auth context
+        created_by: 'current-user-id', // This should come from auth context
+        academic_year: selectedAcademicYear
       };
 
       await ApiService.createInvoice(invoiceDataToSubmit);
@@ -145,6 +150,113 @@ const CreateInvoice: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-5 w-80" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-36" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Form Skeleton */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Invoice Details Skeleton */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                </div>
+                <div>
+                  <Skeleton className="h-4 w-16 mb-2" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Invoice Items Skeleton */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-6 w-32" />
+                  <Skeleton className="h-10 w-24" />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="grid grid-cols-12 gap-4 items-end">
+                    <div className="col-span-5">
+                      <Skeleton className="h-4 w-20 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="col-span-2">
+                      <Skeleton className="h-4 w-16 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="col-span-2">
+                      <Skeleton className="h-4 w-12 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="col-span-2">
+                      <Skeleton className="h-4 w-16 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="col-span-1">
+                      <Skeleton className="h-10 w-10" />
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Summary Skeleton */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-32" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">

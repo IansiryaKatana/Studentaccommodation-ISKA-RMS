@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ApiService, Studio, RoomGrade, Reservation } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { 
   ArrowLeft, 
   Building2, 
@@ -69,6 +70,7 @@ export default function StudioDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { selectedAcademicYear } = useAcademicYear();
   
   const [studio, setStudio] = useState<StudioWithDetails | null>(null);
   const [reservations, setReservations] = useState<ReservationWithDetails[]>([]);
@@ -101,7 +103,7 @@ export default function StudioDetail() {
     return () => {
       window.removeEventListener('studioStatusUpdated', handleStudioStatusUpdate as EventListener);
     };
-  }, [id]);
+  }, [id, selectedAcademicYear]);
 
   const loadStudioData = async () => {
     try {
@@ -112,7 +114,7 @@ export default function StudioDetail() {
       setStudio(studioData);
       
       // Load all reservations for this studio
-      const reservationsData = await ApiService.getReservationsByStudioId(id!);
+      const reservationsData = await ApiService.getReservationsByStudioId(id!, selectedAcademicYear);
       setReservations(reservationsData);
       
     } catch (error) {

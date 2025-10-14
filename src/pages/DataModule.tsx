@@ -2,6 +2,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import DataOverview from '@/components/data/DataOverview';
+import AcademicYearsManagement from '@/components/data/AcademicYearsManagement';
 import DurationsManagement from '@/components/data/DurationsManagement';
 import RoomGradesManagement from '@/components/data/RoomGradesManagement';
 import PricingMatrixManagement from '@/components/data/PricingMatrixManagement';
@@ -18,6 +19,7 @@ const DataModule = () => {
     <div className="min-h-screen bg-background">
       <Routes>
         <Route path="/" element={<DataOverview />} />
+        <Route path="/academic-years" element={<AcademicYearsManagement />} />
         <Route path="/durations" element={<DurationsManagement />} />
         <Route path="/room-grades" element={<RoomGradesManagement />} />
         <Route path="/pricing-matrix" element={<PricingMatrixManagement />} />

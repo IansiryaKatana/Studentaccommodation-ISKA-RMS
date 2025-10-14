@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ApiService, StudentWithUser } from '@/services/api';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const StudentDetail = () => {
   const navigate = useNavigate();
@@ -129,9 +130,45 @@ const StudentDetail = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">Loading student details...</span>
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Header Skeleton */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex items-center space-x-4">
+                <Skeleton className="h-10 w-32" />
+                <div className="space-y-2">
+                  <Skeleton className="h-8 w-64" />
+                  <Skeleton className="h-4 w-48" />
+                </div>
+                <div className="flex gap-2">
+                  <Skeleton className="h-6 w-16" />
+                  <Skeleton className="h-6 w-16" />
+                </div>
+              </div>
+              <Skeleton className="h-10 w-32" />
+            </div>
+          </div>
+
+          {/* Tabs Skeleton */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex space-x-4 mb-6">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-10 w-32" />
+              ))}
+            </div>
+            
+            {/* Tab Content Skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

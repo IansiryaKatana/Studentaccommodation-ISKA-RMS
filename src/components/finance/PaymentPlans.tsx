@@ -6,7 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Search, Filter, Users, CreditCard, Calendar, DollarSign, TrendingUp } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ApiService } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useToast } from '@/hooks/use-toast';
 
 interface InstallmentPlan {
@@ -62,10 +64,12 @@ const PaymentPlans = () => {
   const [dateFilter, setDateFilter] = useState('all');
   const { toast } = useToast();
 
+  const { selectedAcademicYear } = useAcademicYear();
+
   useEffect(() => {
     fetchPaymentPlans();
     fetchAllStudents();
-  }, []);
+  }, [selectedAcademicYear]);
 
   const fetchPaymentPlans = async () => {
     try {
@@ -85,7 +89,7 @@ const PaymentPlans = () => {
 
   const fetchAllStudents = async () => {
     try {
-      const studentsData = await ApiService.getStudents();
+      const studentsData = await ApiService.getStudents(selectedAcademicYear);
       setAllStudents(studentsData || []);
     } catch (error) {
       console.error('Error fetching students:', error);

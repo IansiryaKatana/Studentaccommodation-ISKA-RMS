@@ -8,6 +8,7 @@ import StudentProfile from '@/components/student-portal/StudentProfile';
 import StudentDocuments from '@/components/student-portal/StudentDocuments';
 import StudentMaintenance from '@/components/student-portal/StudentMaintenance';
 import StudentAgreements from '@/components/student-portal/StudentAgreements';
+import StudentRebooking from '@/components/student-portal/StudentRebooking';
 import { initializeStripe } from '@/integrations/stripe/client';
 
 const stripePromise = initializeStripe();
@@ -44,6 +45,11 @@ const StudentPortal = () => {
         <Route path="documents" element={<StudentDocuments studentId={actualStudentId} />} />
         <Route path="maintenance" element={<StudentMaintenance studentId={actualStudentId} />} />
         <Route path="agreements" element={<StudentAgreements studentId={actualStudentId} />} />
+        <Route path="rebooking" element={
+          <Elements stripe={stripePromise}>
+            <StudentRebooking studentId={actualStudentId} />
+          </Elements>
+        } />
       </Routes>
     </div>
   );

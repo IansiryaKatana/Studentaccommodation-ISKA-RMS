@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { Palette, Settings, TrendingUp, Eye } from 'lucide-react';
+import { Palette, Settings, TrendingUp, Eye, Globe } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ApiService } from '@/services/api';
 import { DashboardGridSkeleton } from '@/components/ui/skeleton';
@@ -76,6 +76,14 @@ const BrandingOverview = () => {
       path: '/branding/branding',
       count: stats.brandingConfigured ? 'Configured' : 'Not configured',
       color: 'bg-blue-500'
+    },
+    {
+      title: 'System Preferences',
+      description: 'Configure currency, timezone, and technical settings',
+      icon: Globe,
+      path: '/branding/system-preferences',
+      count: 'System settings',
+      color: 'bg-green-500'
     }
   ];
 

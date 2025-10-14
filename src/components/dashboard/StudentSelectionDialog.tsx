@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, User, Mail, Phone, Building } from 'lucide-react';
 import { ApiService } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 interface Student {
   id: string;
@@ -39,12 +40,13 @@ export default function StudentSelectionDialog({ isOpen, onClose }: StudentSelec
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { selectedAcademicYear } = useAcademicYear();
 
   useEffect(() => {
     if (isOpen) {
       fetchStudents();
     }
-  }, [isOpen]);
+  }, [isOpen, selectedAcademicYear]);
 
   useEffect(() => {
     if (searchTerm.trim() === '') {
@@ -65,7 +67,7 @@ export default function StudentSelectionDialog({ isOpen, onClose }: StudentSelec
   const fetchStudents = async () => {
     setIsLoading(true);
     try {
-      const studentsData = await ApiService.getStudentsWithDetails();
+      const studentsData = await ApiService.getStudentsWithDetails({ academicYear: selectedAcademicYear });
       setStudents(studentsData);
       setFilteredStudents(studentsData);
     } catch (error) {

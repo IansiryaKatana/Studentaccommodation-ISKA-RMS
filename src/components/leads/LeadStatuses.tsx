@@ -8,7 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, ArrowLeft, Search, Filter, Circle, CheckCircle, Clock, AlertCircle, XCircle, TrendingUp } from 'lucide-react';
 import { ApiService, Lead } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface LeadStatus {
   status: string;
@@ -20,6 +22,7 @@ interface LeadStatus {
 
 
 const LeadStatuses = () => {
+  const { selectedAcademicYear } = useAcademicYear();
   const [statusStats, setStatusStats] = useState<LeadStatus[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
@@ -33,7 +36,7 @@ const LeadStatuses = () => {
   useEffect(() => {
     fetchLeadStatusStats();
     fetchAllLeads();
-  }, []);
+  }, [selectedAcademicYear]);
 
   const fetchLeadStatusStats = async () => {
     try {
@@ -67,7 +70,7 @@ const LeadStatuses = () => {
 
   const fetchAllLeads = async () => {
     try {
-      const leadsData = await ApiService.getLeads();
+      const leadsData = await ApiService.getLeads(selectedAcademicYear);
       setAllLeads(leadsData || []);
     } catch (error) {
       console.error('Error fetching all leads:', error);
@@ -182,6 +185,32 @@ const LeadStatuses = () => {
 
     return matchesSearch && matchesSource && matchesDate;
   });
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Lead Statuses</h1>
+            <p className="text-gray-600">Loading lead status data...</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <Skeleton className="h-4 w-3/4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-3 w-20" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

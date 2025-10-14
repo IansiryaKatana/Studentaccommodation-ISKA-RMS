@@ -8,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ApiService, Studio, RoomGrade, Reservation } from '@/services/api';
+import { ApiService, Studio, RoomGrade, Reservation, StudioOccupancy } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { TableSkeleton } from '@/components/ui/skeleton';
 import { 
   Building2, 
   Search, 
@@ -32,6 +34,7 @@ import {
 interface StudioWithDetails extends Studio {
   room_grade?: RoomGrade;
   current_reservation?: Reservation;
+  current_occupancy?: StudioOccupancy; // Per academic year occupancy
   occupancy_stats?: {
     total_days: number;
     occupied_days: number;
@@ -55,6 +58,7 @@ interface StudioStats {
 export default function StudiosList() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { selectedAcademicYear } = useAcademicYear();
   
   const [studios, setStudios] = useState<StudioWithDetails[]>([]);
   const [roomGrades, setRoomGrades] = useState<RoomGrade[]>([]);
@@ -113,17 +117,32 @@ export default function StudiosList() {
     return () => {
       window.removeEventListener('studioStatusUpdated', handleStudioStatusUpdate as EventListener);
     };
-  }, []);
+  }, [selectedAcademicYear]); // Reload when academic year changes
 
   const loadData = async () => {
     try {
       setLoading(true);
       
       // Load studios with detailed information first (don't block on status fix)
-      const studiosData = await ApiService.getStudiosWithDetails();
+      const studiosData = await ApiService.getStudiosWithDetails(selectedAcademicYear);
       console.log('Studios data received:', studiosData);
       console.log('Studios with reservations:', studiosData.filter(s => s.current_reservation !== null));
       console.log('Studios marked as occupied:', studiosData.filter(s => s.status === 'occupied'));
+      
+      // Load academic year occupancy data (no force refresh for better performance)
+      let occupancyData = [];
+      try {
+        occupancyData = await ApiService.getStudioOccupancy(selectedAcademicYear, false); // No force refresh
+        console.log(`📊 Academic year ${selectedAcademicYear} occupancy data:`, occupancyData.length, 'records');
+        console.log('Occupancy breakdown:', {
+          occupied: occupancyData.filter(o => o.status === 'occupied').length,
+          available: occupancyData.filter(o => o.status === 'available').length,
+          other: occupancyData.filter(o => o.status !== 'occupied' && o.status !== 'available').length
+        });
+      } catch (error) {
+        console.log('No occupancy data available yet:', error.message);
+        // This is normal for a new installation - occupancy data will be created as needed
+      }
       
       // Debug: Check reservation data structure
       studiosData.forEach(studio => {
@@ -137,20 +156,53 @@ export default function StudiosList() {
         }
       });
       
-      // Ensure all studios have proper room_grade data
-      const validatedStudiosData = studiosData.map(studio => ({
-        ...studio,
-        room_grade: studio.room_grade || { name: 'Unknown', weekly_rate: 0 },
-        occupancy_stats: studio.occupancy_stats || {
-          total_days: 0,
-          occupied_days: 0,
-          occupancy_rate: 0,
-          total_revenue: 0,
-          average_daily_rate: 0
+      // Merge occupancy data with studios and ensure all studios have proper data
+      const validatedStudiosData = studiosData.map(studio => {
+        const occupancy = occupancyData.find(o => o.studio_id === studio.id);
+        
+        // Determine the correct status based on occupancy data
+        let finalStatus = studio.status; // Default to original status
+        
+        if (occupancy) {
+          // Use occupancy status if available
+          if (occupancy.status === 'occupied') {
+            finalStatus = 'occupied';
+          } else if (occupancy.status === 'available') {
+            finalStatus = 'vacant';
+          } else {
+            finalStatus = occupancy.status; // Use other statuses as-is
+          }
+        } else if (selectedAcademicYear !== 'all') {
+          // If no occupancy data for this academic year, check if studio has reservations
+          const hasReservation = studio.current_reservation && 
+            studio.current_reservation.academic_year === selectedAcademicYear;
+          finalStatus = hasReservation ? 'occupied' : 'vacant';
         }
-      }));
+        
+        return {
+          ...studio,
+          current_occupancy: occupancy,
+          status: finalStatus,
+          room_grade: studio.room_grade || { name: 'Unknown', weekly_rate: 0 },
+          occupancy_stats: studio.occupancy_stats || {
+            total_days: 0,
+            occupied_days: 0,
+            occupancy_rate: 0,
+            total_revenue: 0,
+            average_daily_rate: 0
+          }
+        };
+      });
       
       setStudios(validatedStudiosData);
+      
+      // Debug: Show final status mapping
+      console.log('🎯 Final studio status mapping for', selectedAcademicYear, ':');
+      const statusBreakdown = validatedStudiosData.reduce((acc, studio) => {
+        acc[studio.status] = (acc[studio.status] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('Status breakdown:', statusBreakdown);
       
       // Load room grades for filters
       const gradesData = await ApiService.getRoomGrades();
@@ -201,16 +253,20 @@ export default function StudiosList() {
   const calculateStats = (studiosData: StudioWithDetails[]) => {
     const total = studiosData.length;
     
-    // Count studios with actual current reservations (more accurate than status)
-    const actuallyOccupied = studiosData.filter(s => s.current_reservation !== null).length;
+    // Count studios with actual current reservations OR assigned students
+    const actuallyOccupied = studiosData.filter(s => 
+      s.current_reservation !== null || (s.assigned_students && s.assigned_students.length > 0)
+    ).length;
     
     // Count by status for other stats
-    const vacant = studiosData.filter(s => s.status === 'vacant' && !s.current_reservation).length;
+    const vacant = studiosData.filter(s => 
+      s.status === 'vacant' && !s.current_reservation && (!s.assigned_students || s.assigned_students.length === 0)
+    ).length;
     const maintenance = studiosData.filter(s => s.status === 'maintenance').length;
     const cleaning = studiosData.filter(s => s.status === 'cleaning').length;
     const dirty = studiosData.filter(s => s.status === 'dirty').length;
     
-    // Calculate occupancy rate based on actual reservations
+    // Calculate occupancy rate based on actual reservations + students
     const occupancyRate = total > 0 ? (actuallyOccupied / total) * 100 : 0;
     
     // Calculate total revenue from occupancy stats
@@ -221,7 +277,7 @@ export default function StudiosList() {
 
     setStats({
       total_studios: total,
-      occupied_studios: actuallyOccupied, // Use actual reservations count
+      occupied_studios: actuallyOccupied, // Use actual reservations + students count
       vacant_studios: vacant,
       maintenance_studios: maintenance,
       cleaning_studios: cleaning,
@@ -346,8 +402,14 @@ export default function StudiosList() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Studios Management</h1>
+            <p className="text-muted-foreground">Loading studios data...</p>
+          </div>
+        </div>
+        <TableSkeleton />
       </div>
     );
   }
@@ -358,7 +420,14 @@ export default function StudiosList() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Studios Management</h1>
-          <p className="text-muted-foreground">Manage all studio units and their status</p>
+          <div className="text-muted-foreground">
+            <p className="inline">Manage all studio units and their status</p>
+            {selectedAcademicYear !== 'all' && (
+              <span className="ml-2">
+                • <Badge variant="outline" className="ml-1">{selectedAcademicYear}</Badge>
+              </span>
+            )}
+          </div>
         </div>
         <Button onClick={() => navigate('/studios/add')}>
           <Plus className="h-4 w-4 mr-2" />

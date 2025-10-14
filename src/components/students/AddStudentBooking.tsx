@@ -17,6 +17,8 @@ import { ApiService } from '@/services/api';
 import { supabase } from '@/integrations/supabase/client';
 import StudioSelect from '@/components/ui/studio-select';
 import StudioOccupancyDialog from '@/components/ui/studio-occupancy-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 interface OptionField {
   id: string;
@@ -36,6 +38,7 @@ interface ValidationError {
 const AddStudentBooking = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { selectedAcademicYear } = useAcademicYear();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true);
@@ -554,7 +557,8 @@ const AddStudentBooking = () => {
             deposit_amount: 99,
             balance_due: formData.totalRevenue - 99,
             notes: `Student booking for ${formData.firstName} ${formData.lastName}`,
-            created_by: '423b2f89-ed35-4537-866e-d4fe702e577c' // Admin user ID
+            created_by: '423b2f89-ed35-4537-866e-d4fe702e577c', // Admin user ID
+            academic_year: selectedAcademicYear // Use current academic year from context
           };
 
           reservation = await ApiService.createReservation(reservationData);
@@ -575,6 +579,17 @@ const AddStudentBooking = () => {
         try {
           await ApiService.updateStudioToOccupied(formData.studioId);
           console.log('Studio status updated to occupied');
+          
+          // Dispatch event to notify other modules (Studios List, Overview, etc.)
+          window.dispatchEvent(new CustomEvent('studioStatusUpdated', {
+            detail: {
+              studioId: formData.studioId,
+              newStatus: 'occupied',
+              reason: 'student_assigned'
+            }
+          }));
+          
+          console.log('📡 Dispatched studioStatusUpdated event');
         } catch (error) {
           console.error('Error updating studio status:', error);
           // Don't fail the entire process if studio status update fails
@@ -1236,11 +1251,45 @@ const AddStudentBooking = () => {
   ];
 
   if (isDataLoading) {
-  return (
-      <div className="p-6">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-          <p className="ml-2 text-gray-500">Loading form data...</p>
+    return (
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-96" />
+        </div>
+        
+        {/* Progress Steps Skeleton */}
+        <div className="flex items-center space-x-4 mb-8">
+          {[1, 2, 3, 4, 5, 6].map((step) => (
+            <div key={step} className="flex items-center">
+              <Skeleton className="h-8 w-8 rounded-full" />
+              {step < 6 && <Skeleton className="h-1 w-16 ml-4" />}
+            </div>
+          ))}
+        </div>
+        
+        <Card>
+          <CardContent className="p-8">
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <div className="flex justify-center space-x-4">
+          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-10 w-24" />
         </div>
       </div>
     );

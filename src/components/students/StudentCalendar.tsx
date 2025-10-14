@@ -12,8 +12,10 @@ import {
   LogOut,
   Clock
 } from 'lucide-react';
-import { ApiService } from '@/services/api';
+import { ApiService, Reservation } from '@/services/api';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 interface CalendarEvent {
   id: string;
@@ -28,6 +30,7 @@ interface CalendarEvent {
 
 const StudentCalendar = () => {
   const navigate = useNavigate();
+  const { selectedAcademicYear } = useAcademicYear();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -35,38 +38,64 @@ const StudentCalendar = () => {
 
   useEffect(() => {
     fetchCalendarEvents();
-  }, [currentDate]);
+  }, [currentDate, selectedAcademicYear]);
 
   const fetchCalendarEvents = async () => {
     try {
       setIsLoading(true);
-      // TODO: Implement API call to get student check-in/check-out events
-      // For now, we'll create some dummy data
-      const dummyEvents: CalendarEvent[] = [
-        {
-          id: '1',
-          date: format(new Date(), 'yyyy-MM-dd'),
-          type: 'checkin',
-          student: {
-            id: '1',
-            name: 'John Smith',
-            studio_number: 'S101'
-          }
-        },
-        {
-          id: '2',
-          date: format(addMonths(new Date(), 0), 'yyyy-MM-dd'),
-          type: 'checkout',
-          student: {
-            id: '2',
-            name: 'Jane Doe',
-            studio_number: 'S102'
-          }
+      
+      // Get all reservations with details for the selected academic year
+      const reservations = await ApiService.getRecentReservations({
+        academicYear: selectedAcademicYear,
+        limit: 1000, // Get a large number to ensure we get all reservations
+        type: 'student' // Only student reservations for this calendar
+      });
+      
+      // Transform reservations into calendar events
+      const calendarEvents: CalendarEvent[] = [];
+      
+      reservations.forEach((reservation: any) => {
+        // Add check-in event
+        if (reservation.check_in_date) {
+          const studentName = reservation.student?.user 
+            ? `${reservation.student.user.first_name} ${reservation.student.user.last_name}`
+            : 'Unknown Student';
+            
+          calendarEvents.push({
+            id: `${reservation.id}-checkin`,
+            date: reservation.check_in_date,
+            type: 'checkin',
+            student: {
+              id: reservation.student_id,
+              name: studentName,
+              studio_number: reservation.studio?.studio_number
+            }
+          });
         }
-      ];
-      setEvents(dummyEvents);
+        
+        // Add check-out event
+        if (reservation.check_out_date) {
+          const studentName = reservation.student?.user 
+            ? `${reservation.student.user.first_name} ${reservation.student.user.last_name}`
+            : 'Unknown Student';
+            
+          calendarEvents.push({
+            id: `${reservation.id}-checkout`,
+            date: reservation.check_out_date,
+            type: 'checkout',
+            student: {
+              id: reservation.student_id,
+              name: studentName,
+              studio_number: reservation.studio?.studio_number
+            }
+          });
+        }
+      });
+      
+      setEvents(calendarEvents);
     } catch (error) {
       console.error('Error fetching calendar events:', error);
+      setEvents([]);
     } finally {
       setIsLoading(false);
     }
@@ -205,13 +234,87 @@ const StudentCalendar = () => {
     );
   };
 
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex justify-between items-center">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <Skeleton className="h-10 w-40" />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Calendar Skeleton */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-6 w-48" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {/* Calendar Grid Skeleton */}
+                <div className="grid grid-cols-7 gap-1 mb-4">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                    <div key={day} className="p-2 text-center">
+                      <Skeleton className="h-4 w-8 mx-auto" />
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {Array.from({ length: 35 }).map((_, i) => (
+                    <Skeleton key={i} className="h-20 w-full" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar Skeleton */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-32" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center space-x-3">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Student Calendar</h1>
-          <p className="text-gray-600 mt-1">Track student check-ins and check-outs</p>
+          <p className="text-gray-600 mt-1">
+            Track student check-ins and check-outs
+            {selectedAcademicYear && selectedAcademicYear !== 'all' && (
+              <span className="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                Academic Year: {selectedAcademicYear}
+              </span>
+            )}
+          </p>
         </div>
         <Button onClick={() => navigate('/students/checkin-checkout')}>
           <Clock className="h-4 w-4 mr-2" />

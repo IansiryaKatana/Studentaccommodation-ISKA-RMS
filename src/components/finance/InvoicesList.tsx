@@ -7,9 +7,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Search, Filter, Eye, Edit, Download, Calendar, DollarSign } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ApiService, Invoice } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 const InvoicesList = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -22,14 +24,16 @@ const InvoicesList = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const { selectedAcademicYear } = useAcademicYear();
+
   useEffect(() => {
     fetchInvoices();
-  }, []);
+  }, [selectedAcademicYear]);
 
   const fetchInvoices = async () => {
     try {
       setLoading(true);
-      const invoicesData = await ApiService.getInvoices();
+      const invoicesData = await ApiService.getInvoices(selectedAcademicYear);
       setInvoices(invoicesData || []);
     } catch (error) {
       console.error('Error fetching invoices:', error);
@@ -111,34 +115,61 @@ const InvoicesList = () => {
   if (loading) {
     return (
       <div className="space-y-6">
+        {/* Header Skeleton */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
-            <p className="text-gray-600">Manage and track all invoices</p>
+            <Skeleton className="h-8 w-32 mb-2" />
+            <Skeleton className="h-5 w-64" />
           </div>
+          <Skeleton className="h-10 w-32" />
         </div>
-        <div className="space-y-4">
-          {[...Array(5)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-8 h-8 bg-gray-200 rounded-lg"></div>
-                    <div>
-                      <div className="h-4 bg-gray-200 rounded w-32 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-48"></div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="h-4 bg-gray-200 rounded w-20"></div>
-                    <div className="h-4 bg-gray-200 rounded w-16"></div>
-                    <div className="h-6 bg-gray-200 rounded w-16"></div>
+
+        {/* Filters Skeleton */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex gap-4">
+              <Skeleton className="h-10 w-64" />
+              <Skeleton className="h-10 w-32" />
+              <Skeleton className="h-10 w-32" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Table Skeleton */}
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-24" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Table Header Skeleton */}
+              <div className="grid grid-cols-6 gap-4 p-4 border-b">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+              
+              {/* Table Rows Skeleton */}
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="grid grid-cols-6 gap-4 p-4 border-b">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-6 w-16" />
+                  <Skeleton className="h-4 w-20" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

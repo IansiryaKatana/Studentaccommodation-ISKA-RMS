@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { ApiService } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 interface MaintenanceRequest {
   id: string;
@@ -65,6 +66,7 @@ interface MaintenanceRequest {
 
 const MaintenanceRequests = () => {
   const { toast } = useToast();
+  const { selectedAcademicYear } = useAcademicYear();
   const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -86,7 +88,7 @@ const MaintenanceRequests = () => {
     };
 
     markAsSeen();
-  }, []);
+  }, [selectedAcademicYear]);
 
   const fetchMaintenanceRequests = async () => {
     try {
@@ -94,8 +96,8 @@ const MaintenanceRequests = () => {
       
       // Fetch all maintenance requests and expenses from the API
       const [maintenanceData, expensesData] = await Promise.all([
-        ApiService.getAllMaintenanceRequests(),
-        ApiService.getExpenses().catch(() => []) // Don't fail if expenses table doesn't exist yet
+        ApiService.getAllMaintenanceRequests(selectedAcademicYear),
+        ApiService.getExpenses(selectedAcademicYear).catch(() => []) // Don't fail if expenses table doesn't exist yet
       ]);
 
       // Merge expense data with maintenance requests

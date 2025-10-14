@@ -1,7 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useLeadCounters } from '@/hooks/useLeadCounters';
+import { LogoutConfirmationDialog } from '@/components/auth/LogoutConfirmationDialog';
+import { AcademicYearSelector } from '@/components/ui/AcademicYearSelector';
 import {
   Sidebar,
   SidebarContent,
@@ -36,8 +38,6 @@ import {
   Building,
   User,
   Shield,
-  Bell,
-  Zap,
   BarChart,
   Download,
   HardDrive,
@@ -56,7 +56,8 @@ import {
   Receipt,
   BarChart3,
   Send,
-  TrendingUp
+  TrendingUp,
+  Bell
 } from 'lucide-react';
 import { useModuleStyles } from '@/contexts/ModuleStylesContext';
 import { useAuth, useModuleAccess } from '@/contexts/AuthContext';
@@ -172,10 +173,7 @@ const moduleRoutes: Record<string, ModuleRoute> = {
     basePath: '/cleaning',
     gradient: 'cleaning',
     pages: [
-      { title: 'Overview', path: '/cleaning', icon: Sparkles },
-      { title: 'Daily Schedule', path: '/cleaning/daily-schedule', icon: Calendar },
-      { title: 'Cleaner Management', path: '/cleaning/cleaners', icon: Users },
-      { title: 'Calendar View', path: '/cleaning/calendar-view', icon: Calendar }
+      { title: 'Overview', path: '/cleaning', icon: Sparkles }
     ]
   },
   finance: {
@@ -201,6 +199,7 @@ const moduleRoutes: Record<string, ModuleRoute> = {
     gradient: 'data',
     pages: [
       { title: 'Overview', path: '/data', icon: Database },
+      { title: 'Academic Years', path: '/data/academic-years', icon: Calendar },
       { title: 'Room Grades', path: '/data/room-grades', icon: Building },
       { title: 'Pricing Matrix', path: '/data/pricing-matrix', icon: DollarSign },
       { title: 'Durations', path: '/data/durations', icon: Clock },
@@ -235,7 +234,8 @@ const moduleRoutes: Record<string, ModuleRoute> = {
     pages: [
       { title: 'Overview', path: '/branding', icon: Palette },
       { title: 'Module Styles', path: '/branding/module-styles', icon: Palette },
-      { title: 'Branding', path: '/branding/branding', icon: Settings }
+      { title: 'Branding', path: '/branding/branding', icon: Settings },
+      { title: 'System Preferences', path: '/branding/system-preferences', icon: Globe }
     ]
   },
   'comms-marketing': {
@@ -264,9 +264,6 @@ const moduleRoutes: Record<string, ModuleRoute> = {
       { title: 'Users', path: '/settings/users', icon: Users },
       { title: 'Student Accounts', path: '/settings/student-accounts', icon: User },
       { title: 'System Preferences', path: '/settings/system', icon: Wrench },
-      { title: 'Security', path: '/settings/security', icon: Shield },
-      { title: 'Integrations', path: '/settings/integrations', icon: Zap },
-      { title: 'Notifications', path: '/settings/notifications', icon: Bell },
       { title: 'Configuration', path: '/settings/config', icon: Database },
       { title: 'Module Access Config', path: '/settings/module-access', icon: Shield, hasSubmenu: false },
       { title: 'Bulk Upload Students', path: '/settings/bulk-upload-students', icon: Upload },
@@ -284,7 +281,8 @@ const moduleRoutes: Record<string, ModuleRoute> = {
       { title: 'Profile', path: '/student-portal/profile', icon: User },
       { title: 'Documents', path: '/student-portal/documents', icon: FileText },
       { title: 'Maintenance', path: '/student-portal/maintenance', icon: Wrench },
-      { title: 'Agreements', path: '/student-portal/agreements', icon: FileText }
+      { title: 'Agreements', path: '/student-portal/agreements', icon: FileText },
+      { title: 'Rebooking', path: '/student-portal/rebooking', icon: Calendar }
     ]
   }
 };
@@ -389,12 +387,13 @@ function SubmenuItem({
 }
 
 function AppSidebar() {
-  const { user, logout, hasRole } = useAuth();
+  const { user, logout, hasRole, isLoading: authLoading } = useAuth();
   const { accessibleModules, isLoading: modulesLoading } = useModuleAccess();
   const { state } = useSidebar();
   const navigate = useNavigate();
   const location = useLocation();
   const { counters, markCallbackVisited, markViewingVisited } = useLeadCounters();
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   const getCurrentModule = () => {
     const path = location.pathname;
@@ -411,6 +410,14 @@ function AppSidebar() {
 
   // If we're not in a module, don't show the sidebar
   if (!currentModule) return null;
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   const isActive = (path: string) => {
     if (currentModule?.key === 'student-portal') {
@@ -568,12 +575,20 @@ function AppSidebar() {
         )}
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={logout} className="hover:bg-destructive hover:text-destructive-foreground">
+            <SidebarMenuButton onClick={() => setShowLogoutDialog(true)} className="hover:bg-destructive hover:text-destructive-foreground">
               <span>Logout</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+
+      {/* Logout Confirmation Dialog */}
+      <LogoutConfirmationDialog
+        isOpen={showLogoutDialog}
+        onClose={() => setShowLogoutDialog(false)}
+        onConfirm={handleLogout}
+        isLoading={authLoading}
+      />
     </Sidebar>
   );
 }
@@ -591,8 +606,9 @@ export function MainLayout({ children }: MainLayoutProps) {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <SidebarInset className="flex-1">
-          <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+          <header className="flex h-14 shrink-0 items-center justify-between border-b px-4">
             <SidebarTrigger />
+            <AcademicYearSelector variant="minimal" />
           </header>
           <div className="flex-1 overflow-auto p-6 lg:zoom-85 xl:zoom-90 2xl:zoom-100">
             {children}

@@ -12,6 +12,7 @@ import { PopoverClose } from '@radix-ui/react-popover';
 import StudioSelect from '@/components/ui/studio-select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ApiService, StudentWithUser, Reservation } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { User, Mail, Phone, MapPin, FileText, Calendar, Building, CreditCard, Shield, Loader2, Edit, Save, X } from 'lucide-react';
@@ -32,6 +33,7 @@ const StudentProfile = ({ studentId }: StudentProfileProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState<any>({});
+  const { selectedAcademicYear } = useAcademicYear();
 
   // Check if user can edit (staff roles can edit, students can only view)
   const canEdit = user?.role && ['admin', 'super_admin', 'salesperson', 'reservationist', 'operations_manager'].includes(user.role);
@@ -256,7 +258,7 @@ const StudentProfile = ({ studentId }: StudentProfileProps) => {
       
       // Get reservation data (may be null for direct bookings)
       try {
-        const reservationData = await ApiService.getReservationByStudentId(studentId);
+        const reservationData = await ApiService.getReservationByStudentId(studentId, selectedAcademicYear);
         setReservation(reservationData);
       } catch (error) {
         console.log('No reservation found for student (direct booking)');

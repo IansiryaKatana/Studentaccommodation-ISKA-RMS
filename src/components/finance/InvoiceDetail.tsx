@@ -25,6 +25,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { ApiService, Invoice } from '@/services/api';
 import { PDFService } from '@/services/pdfService';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface InvoiceWithDetails extends Invoice {
   reservation?: any & { studio?: any };
@@ -166,9 +167,124 @@ const InvoiceDetail: React.FC = () => {
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-          <span className="ml-2 text-gray-500">Loading invoice details...</span>
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-10 w-32" />
+            <div>
+              <Skeleton className="h-8 w-64 mb-2" />
+              <Skeleton className="h-5 w-32" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-20" />
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-24" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content Skeleton */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Invoice Information Skeleton */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Customer Information Skeleton */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Invoice Items Skeleton */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <Skeleton className="h-4 w-32 mb-1" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                      <Skeleton className="h-4 w-20" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar Skeleton */}
+          <div className="space-y-6">
+            {/* Status Card Skeleton */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-24" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-1" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Actions Skeleton */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-20" />
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );

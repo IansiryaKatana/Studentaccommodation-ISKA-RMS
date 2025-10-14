@@ -7,8 +7,10 @@ import { Plus } from 'lucide-react';
 import { ApiService } from '@/services/api';
 import PaymentEventService, { PaymentEvent } from '@/services/paymentEventService';
 import { TableSkeleton, StatsCardSkeleton } from '@/components/ui/skeleton';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 const StudiosOverview = () => {
+  const { selectedAcademicYear } = useAcademicYear();
   const [stats, setStats] = useState({
     totalStudios: 0,
     availableStudios: 0,
@@ -18,7 +20,7 @@ const StudiosOverview = () => {
     dirtyStudios: 0,
     totalRevenue: 0
   });
-  const [recentStudios, setRecentStudios] = useState([]);
+  const [recentReservations, setRecentReservations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -36,15 +38,32 @@ const StudiosOverview = () => {
       // Refresh stats to reflect studio status changes
       fetchStats();
     };
+
+    // Listen for new reservations to refresh stats
+    const handleNewReservation = (event: CustomEvent) => {
+      console.log(`🔄 New reservation created, refreshing StudiosOverview stats`);
+      fetchStats();
+    };
+    
+    // Listen for student assignments (which also affect studio occupancy)
+    const handleStudentAssignment = (event: CustomEvent) => {
+      const { reason } = event.detail || {};
+      if (reason === 'student_assigned') {
+        console.log(`🔄 Student assigned to studio, refreshing StudiosOverview stats`);
+        fetchStats();
+      }
+    };
     
     window.addEventListener('studioStatusUpdated', handleStudioStatusUpdate as EventListener);
+    window.addEventListener('newReservationCreated', handleNewReservation as EventListener);
     
     return () => {
       // Cleanup: unregister listener when component unmounts
       paymentEventService.unregisterListener('StudiosOverview');
       window.removeEventListener('studioStatusUpdated', handleStudioStatusUpdate as EventListener);
+      window.removeEventListener('newReservationCreated', handleNewReservation as EventListener);
     };
-  }, []);
+  }, [selectedAcademicYear]);
 
   // Handle payment events for real-time revenue updates
   const handlePaymentEvent = async (event: PaymentEvent) => {
@@ -57,16 +76,41 @@ const StudiosOverview = () => {
   const fetchStats = async () => {
     try {
       setIsLoading(true);
-      const studios = await ApiService.getStudiosWithDetails();
+      const studios = await ApiService.getStudiosWithDetails(selectedAcademicYear);
       
-      // Calculate basic stats from actual data
+      // Get academic year specific occupancy data (no force refresh for better performance)
+      let occupancyData = [];
+      try {
+        occupancyData = await ApiService.getStudioOccupancy(selectedAcademicYear, false); // No force refresh
+      } catch (error) {
+        console.log('No occupancy data available yet:', error.message);
+        // This is normal for a new installation - occupancy data will be created as needed
+      }
+      
+      // Calculate basic stats from actual data (same logic as StudiosList)
       const totalStudios = studios.length;
       
-      // Count studios with actual current reservations (more accurate than status)
-      const actuallyOccupied = studios.filter(s => s.current_reservation !== null).length;
+      // Count studios with actual current reservations OR assigned students
+      const actuallyOccupied = studios.filter(s => 
+        s.current_reservation !== null || (s.assigned_students && s.assigned_students.length > 0)
+      ).length;
       
-      // Count by status for other stats
-      const availableStudios = studios.filter(s => s.status === 'vacant' && !s.current_reservation).length;
+      // Count available studios (vacant status and no current reservation and no students)
+      const availableStudios = studios.filter(s => 
+        s.status === 'vacant' && !s.current_reservation && (!s.assigned_students || s.assigned_students.length === 0)
+      ).length;
+      
+      // Debug logging
+      console.log('🏢 StudiosOverview stats calculation:', {
+        totalStudios,
+        actuallyOccupied,
+        availableStudios,
+        studiosWithReservations: studios.filter(s => s.current_reservation !== null).length,
+        vacantStudios: studios.filter(s => s.status === 'vacant').length,
+        academicYear: selectedAcademicYear
+      });
+      
+      // Count by status for other stats (these are studio-level, not academic year specific)
       const maintenanceStudios = studios.filter(s => s.status === 'maintenance').length;
       const cleaningStudios = studios.filter(s => s.status === 'cleaning').length;
       const dirtyStudios = studios.filter(s => s.status === 'dirty').length;
@@ -86,11 +130,17 @@ const StudiosOverview = () => {
         totalRevenue
       });
 
-      // Get recent studios for the table
-      const sortedStudios = studios
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-        .slice(0, 6);
-      setRecentStudios(sortedStudios);
+      // Get recent reservations for the table
+      try {
+        const recentReservationsData = await ApiService.getRecentReservations({
+          academicYear: selectedAcademicYear,
+          limit: 10
+        });
+        setRecentReservations(recentReservationsData);
+      } catch (error) {
+        console.log('No recent reservations found:', error.message);
+        setRecentReservations([]);
+      }
     } catch (error) {
       console.error('Error fetching studio stats:', error);
     } finally {
@@ -194,11 +244,11 @@ const StudiosOverview = () => {
         )}
       </div>
 
-      {/* Recent Studios Table */}
+      {/* Recent Reservations Table */}
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>Recent Studios</CardTitle>
+            <CardTitle>Recent Reservations</CardTitle>
             <Link to="/studios/list">
               <Button variant="outline" size="sm">
                 View All Studios
@@ -208,45 +258,66 @@ const StudiosOverview = () => {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <TableSkeleton rows={5} columns={5} />
-          ) : recentStudios.length === 0 ? (
+            <TableSkeleton rows={5} columns={6} />
+          ) : recentReservations.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              <p>No studios found</p>
+              <p>No recent reservations found</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Studio Number</TableHead>
+                  <TableHead>Studio</TableHead>
                   <TableHead>Room Grade</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead>Floor</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Check-in / Check-out</TableHead>
+                  <TableHead>Guest</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentStudios.map((studio) => (
-                  <TableRow key={studio.id}>
+                {recentReservations.map((reservation) => (
+                  <TableRow key={reservation.id}>
                     <TableCell>
                       <div className="font-medium">
-                        {studio.studio_number}
+                        Studio {reservation.studio?.studio_number}
                       </div>
                     </TableCell>
                     <TableCell>
-                      {studio.room_grade?.name || 'Not assigned'}
+                      {reservation.studio?.room_grade?.name || 'Not assigned'}
                     </TableCell>
                     <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(studio.current_reservation ? 'occupied' : studio.status)}`}>
-                        {studio.current_reservation ? 'Occupied' : studio.status}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {studio.floor !== null && studio.floor !== undefined 
-                        ? (studio.floor === 0 ? 'Ground floor' : `Floor ${studio.floor}`)
+                      {reservation.studio?.floor !== null && reservation.studio?.floor !== undefined 
+                        ? (reservation.studio.floor === 0 ? 'Ground floor' : `Floor ${reservation.studio.floor}`)
                         : 'Not specified'}
                     </TableCell>
                     <TableCell>
-                      {new Date(studio.created_at).toLocaleDateString()}
+                      {reservation.duration?.name || 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <div>{new Date(reservation.check_in_date).toLocaleDateString()}</div>
+                        <div className="text-gray-500">to {new Date(reservation.check_out_date).toLocaleDateString()}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {reservation.type === 'student' ? (
+                          <div>
+                            <div className="font-medium">
+                              {reservation.student?.user?.first_name} {reservation.student?.user?.last_name}
+                            </div>
+                            <div className="text-gray-500 text-xs">Student</div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="font-medium">
+                              {reservation.tourist?.first_name} {reservation.tourist?.last_name}
+                            </div>
+                            <div className="text-gray-500 text-xs">Tourist</div>
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

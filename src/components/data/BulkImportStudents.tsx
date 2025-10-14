@@ -25,6 +25,7 @@ import {
   RefreshCw,
   GraduationCap
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import Papa from 'papaparse';
 
@@ -384,6 +385,64 @@ const BulkImportStudents = () => {
       </Badge>
     );
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 p-6">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-8 w-80 mb-2" />
+            <Skeleton className="h-5 w-96" />
+          </div>
+          <Skeleton className="h-10 w-48" />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Template Download Skeleton */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-5 w-5" />
+                <Skeleton className="h-6 w-48" />
+              </div>
+              <Skeleton className="h-4 w-80" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <div className="space-y-1">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <Skeleton key={i} className="h-3 w-full" />
+                  ))}
+                </div>
+              </div>
+              <Skeleton className="h-10 w-40" />
+            </CardContent>
+          </Card>
+
+          {/* File Upload Skeleton */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-5 w-5" />
+                <Skeleton className="h-6 w-32" />
+              </div>
+              <Skeleton className="h-4 w-80" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <Skeleton className="h-8 w-8 mx-auto mb-2" />
+                <Skeleton className="h-4 w-48 mx-auto mb-2" />
+                <Skeleton className="h-4 w-32 mx-auto" />
+              </div>
+              <Skeleton className="h-10 w-32" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">

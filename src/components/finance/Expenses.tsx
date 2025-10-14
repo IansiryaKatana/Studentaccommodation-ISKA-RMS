@@ -26,7 +26,9 @@ import {
   Eye,
   FileText
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ApiService, Expense, MaintenanceRequest } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useToast } from '@/hooks/use-toast';
 
 interface ExpenseStats {
@@ -67,15 +69,17 @@ const Expenses = () => {
     { value: 'other', label: 'Other' }
   ];
 
+  const { selectedAcademicYear } = useAcademicYear();
+
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedAcademicYear]);
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
       const [expensesData, maintenanceData, statsData] = await Promise.all([
-        ApiService.getExpenses(),
+        ApiService.getExpenses(selectedAcademicYear),
         ApiService.getAllMaintenanceRequests(),
         ApiService.getExpenseStats().catch(() => null)
       ]);
@@ -119,7 +123,7 @@ const Expenses = () => {
         maintenance_request_id: newExpense.maintenance_request_id === 'none' ? undefined : newExpense.maintenance_request_id
       };
       
-      await ApiService.createExpense(expenseData);
+      await ApiService.createExpense({ ...expenseData, academic_year: selectedAcademicYear });
 
       toast({
         title: "Success",
@@ -196,11 +200,47 @@ const Expenses = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-sm text-gray-600">Loading expenses...</p>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-8 w-48 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-10 w-32" />
         </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <Skeleton className="h-4 w-20 mb-2" />
+                <Skeleton className="h-8 w-16 mb-1" />
+                <Skeleton className="h-3 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center space-x-4">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                  <Skeleton className="h-6 w-16" />
+                  <Skeleton className="h-8 w-20" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

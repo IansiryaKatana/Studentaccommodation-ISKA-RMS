@@ -7,6 +7,7 @@ import { Calendar, Clock, User, Phone, Plus, Search, Filter } from 'lucide-react
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ApiService, Lead } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useToast } from '@/hooks/use-toast';
 
 interface FollowUp {
@@ -37,9 +38,11 @@ const FollowUps = () => {
   const [priorityFilter, setPriorityFilter] = useState('all');
   const { toast } = useToast();
 
+  const { selectedAcademicYear } = useAcademicYear();
+
   useEffect(() => {
     fetchFollowUps();
-  }, []);
+  }, [selectedAcademicYear]);
 
   const fetchFollowUps = async () => {
     try {
@@ -47,7 +50,7 @@ const FollowUps = () => {
       
       // For now, we'll create follow-ups from leads data since we don't have a dedicated follow-ups table
       // In a real implementation, you would have a follow_ups table in the database
-      const leads = await ApiService.getLeads();
+      const leads = await ApiService.getLeads(selectedAcademicYear);
       
       // Create mock follow-ups from leads data for demonstration
       const mockFollowUps: FollowUp[] = leads?.slice(0, 10).map((lead, index) => ({

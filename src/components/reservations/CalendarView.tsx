@@ -18,6 +18,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { ApiService } from '@/services/api';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, parseISO } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface CalendarEvent {
   id: string;
@@ -297,6 +298,73 @@ const CalendarView = () => {
       </Card>
     );
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex justify-between items-center">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-5 w-80" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Calendar Skeleton */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-6 w-32" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {/* Calendar Grid Skeleton */}
+                <div className="grid grid-cols-7 gap-1">
+                  {/* Day headers */}
+                  {Array.from({ length: 7 }).map((_, i) => (
+                    <Skeleton key={i} className="h-8 w-full" />
+                  ))}
+                  
+                  {/* Calendar days */}
+                  {Array.from({ length: 35 }).map((_, i) => (
+                    <Skeleton key={i} className="h-20 w-full" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Events Panel Skeleton */}
+          <div>
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-24" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 border rounded-lg">
+                    <Skeleton className="h-8 w-8 rounded" />
+                    <div className="flex-1">
+                      <Skeleton className="h-4 w-24 mb-1" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                    <Skeleton className="h-6 w-16" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">

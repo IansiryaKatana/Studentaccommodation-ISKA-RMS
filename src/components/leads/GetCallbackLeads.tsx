@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ApiService, Lead } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { StatCardsCarousel } from '@/components/leads/StatCardsCarousel';
 
@@ -33,10 +34,12 @@ const GetCallbackLeads = () => {
   const [leadToDelete, setLeadToDelete] = useState<Lead | null>(null);
   const navigate = useNavigate();
 
+  const { selectedAcademicYear } = useAcademicYear();
+
   const fetchLeads = async () => {
     try {
       setLoading(true);
-      const data = await ApiService.getLeads();
+      const data = await ApiService.getLeads(selectedAcademicYear);
       // Filter only leads from "Websites" source (Get a Callback leads)
       // Exclude viewing booking leads (those with "Viewing booking requested for:" in notes)
       const callbackLeads = data.filter(lead => 
@@ -53,7 +56,7 @@ const GetCallbackLeads = () => {
 
   useEffect(() => {
     fetchLeads();
-  }, []);
+  }, [selectedAcademicYear]);
 
   const handleDelete = async () => {
     if (!leadToDelete) return;

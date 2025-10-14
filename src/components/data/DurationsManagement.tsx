@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ApiService, Duration } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { 
   Clock, 
   Plus, 
@@ -17,10 +18,24 @@ import {
   CheckCircle,
   Loader2
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
+// Helper functions for calculating academic year dates
+const calculateCheckInDate = (academicYear: string | 'all'): string => {
+  if (academicYear === 'all') return '2025-09-01';
+  const year = parseInt(academicYear.split('/')[0]);
+  return `${year}-09-01`;
+};
+
+const calculateCheckOutDate = (academicYear: string | 'all'): string => {
+  if (academicYear === 'all') return '2026-07-01';
+  const year = parseInt(academicYear.split('/')[1]);
+  return `${year}-07-01`;
+};
 
 const DurationsManagement = () => {
   const { toast } = useToast();
+  const { selectedAcademicYear } = useAcademicYear();
   const [durations, setDurations] = useState<Duration[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -32,12 +47,12 @@ const DurationsManagement = () => {
 
   useEffect(() => {
     fetchDurations();
-  }, []);
+  }, [selectedAcademicYear]);
 
   const fetchDurations = async () => {
     try {
       setIsLoading(true);
-      const data = await ApiService.getDurations();
+      const data = await ApiService.getDurations('student', selectedAcademicYear);
       setDurations(data || []);
     } catch (error) {
       console.error('Error fetching durations:', error);
@@ -61,9 +76,9 @@ const DurationsManagement = () => {
           description: newDuration.description,
           is_active: true,
           duration_type: 'student' as const,
-          academic_year: '2025/2026',
-          check_in_date: '2025-09-01',
-          check_out_date: '2026-07-01'
+          academic_year: selectedAcademicYear !== 'all' ? selectedAcademicYear : '2025/2026',
+          check_in_date: calculateCheckInDate(selectedAcademicYear),
+          check_out_date: calculateCheckOutDate(selectedAcademicYear)
         };
         
         await ApiService.createDuration(durationData);
@@ -127,6 +142,49 @@ const DurationsManagement = () => {
       });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 p-6">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-5 w-80" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+
+        {/* Durations Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-6 w-32" />
+                  <Skeleton className="h-6 w-16" />
+                </div>
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-6 w-20" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">

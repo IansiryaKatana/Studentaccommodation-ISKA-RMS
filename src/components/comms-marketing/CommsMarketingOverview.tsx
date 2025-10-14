@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { ApiService } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { DashboardGridSkeleton } from '@/components/ui/skeleton';
 
 interface CommsMarketingStats {
@@ -32,6 +33,7 @@ interface CommsMarketingStats {
 const CommsMarketingOverview = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { selectedAcademicYear } = useAcademicYear();
   const [stats, setStats] = useState<CommsMarketingStats>({
     totalMaintenanceRequests: 0,
     pendingRequests: 0,
@@ -60,7 +62,7 @@ const CommsMarketingOverview = () => {
 
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [selectedAcademicYear]);
 
   const fetchStats = async () => {
     try {
@@ -68,9 +70,9 @@ const CommsMarketingOverview = () => {
       
       // Fetch maintenance requests, student data, and new requests count
       const [students, maintenanceRequests, newRequestsCount] = await Promise.all([
-        ApiService.getStudentsWithDetails(),
-        ApiService.getAllMaintenanceRequests(),
-        ApiService.getNewMaintenanceRequestsCount()
+        ApiService.getStudentsWithDetails({ academicYear: selectedAcademicYear }),
+        ApiService.getAllMaintenanceRequests(selectedAcademicYear),
+        ApiService.getNewMaintenanceRequestsCount(selectedAcademicYear)
       ]);
 
       // Calculate maintenance request stats

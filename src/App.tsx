@@ -1,11 +1,12 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 
 import { MainLayout } from '@/components/layout/MainLayout';
-import Dashboard from '@/components/dashboard/Dashboard';
+import DashboardPage from '@/pages/DashboardPage';
+import OldDashboard from '@/components/dashboard/OldDashboard';
 import LeadsModule from '@/pages/LeadsModule';
 import ReservationsModule from '@/pages/ReservationsModule';
 import StudentsModule from '@/pages/StudentsModule';
@@ -24,8 +25,12 @@ import BookingPage from '@/components/public/BookingPage';
 import { BrandingProvider } from '@/contexts/BrandingContext';
 import { ModuleStylesProvider } from '@/contexts/ModuleStylesContext';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { AcademicYearProvider } from '@/contexts/AcademicYearContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import LoginPage from '@/pages/LoginPage';
+import OldLoginPage from '@/pages/OldLoginPage';
+import { FaviconService } from '@/services/faviconService';
+import { PageTitleService } from '@/services/pageTitleService';
 
 // Create a client with optimized caching
 const queryClient = new QueryClient({
@@ -44,21 +49,36 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Initialize favicon and page title services on app startup
+  useEffect(() => {
+    FaviconService.initialize();
+    PageTitleService.initialize();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrandingProvider>
-          <ModuleStylesProvider>
+          <AcademicYearProvider>
+            <ModuleStylesProvider>
             <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <Routes>
                 {/* Public routes */}
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/old-login" element={<OldLoginPage />} />
                 <Route path="/book" element={<BookingPage />} />
                 
                 {/* Protected routes */}
                 <Route path="/" element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <DashboardPage />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Old Dashboard (Archived) */}
+                <Route path="/old-dashboard" element={
+                  <ProtectedRoute>
+                    <OldDashboard />
                   </ProtectedRoute>
                 } />
                 
@@ -170,7 +190,8 @@ function App() {
               </Routes>
               <Toaster />
             </Router>
-          </ModuleStylesProvider>
+            </ModuleStylesProvider>
+          </AcademicYearProvider>
         </BrandingProvider>
       </AuthProvider>
     </QueryClientProvider>

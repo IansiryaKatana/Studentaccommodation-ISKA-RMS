@@ -39,6 +39,20 @@ async function handler(req: Request): Promise<Response> {
     const serviceKey = Deno.env.get('SERVICE_ROLE_KEY')!;
     const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
 
+    // Get the current academic year from the database
+    const { data: currentAcademicYear, error: yearError } = await admin
+      .from('academic_years')
+      .select('name')
+      .eq('is_current', true)
+      .single()
+
+    let academicYear = '2025/2026' // Fallback default
+    if (!yearError && currentAcademicYear) {
+      academicYear = currentAcademicYear.name
+    } else {
+      console.log('Could not fetch current academic year, using fallback:', academicYear)
+    }
+
     // Create minimal student
     const { data: student, error: studentErr } = await admin
       .from('students')
@@ -46,7 +60,7 @@ async function handler(req: Request): Promise<Response> {
         first_name, last_name, email, phone,
         studio_id: null,
         room_grade_id,
-        academic_year: null,
+        academic_year: academicYear, // Use current academic year from database
         wants_installments: true,
         installment_plan_id,
         deposit_paid: true,

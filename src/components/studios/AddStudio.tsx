@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { ApiService } from '@/services/api';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface RoomGrade {
   id: string;
@@ -153,157 +154,170 @@ const AddStudio = () => {
 
   if (isDataLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Loading room grades...</span>
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-10 w-10 rounded" />
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
         </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-48 mb-2" />
+            <Skeleton className="h-4 w-96" />
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+            <div className="flex gap-4 pt-4">
+              <Skeleton className="h-10 w-24" />
+              <Skeleton className="h-10 w-24" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-6 max-w-2xl">
+    <div className="container mx-auto py-6 max-w-6xl">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleCancel}
-            className="flex items-center space-x-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back to Studios</span>
-          </Button>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold">Add New Studio</h1>
+        <p className="text-muted-foreground mt-2">
+          Create a new studio unit with its specifications and room grade.
+        </p>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Add New Studio</CardTitle>
-          <CardDescription>
-            Create a new studio unit with its specifications and room grade.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Studio Number */}
-            <div className="space-y-2">
-              <Label htmlFor="studio_number">Studio Number *</Label>
-              <Input
-                id="studio_number"
-                placeholder="e.g., S101, A201, B305"
-                value={formData.studio_number}
-                onChange={(e) => updateFormData('studio_number', e.target.value)}
-                className="uppercase"
-                required
-              />
-              <p className="text-sm text-muted-foreground">
-                Enter a unique studio number (letters and numbers only)
-              </p>
+        <CardContent className="p-8">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* First Row - Studio Number and Room Grade */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="studio_number">Studio Number *</Label>
+                <Input
+                  id="studio_number"
+                  placeholder="e.g., S101, A201, B305"
+                  value={formData.studio_number}
+                  onChange={(e) => updateFormData('studio_number', e.target.value)}
+                  className="uppercase"
+                  required
+                />
+                <p className="text-sm text-muted-foreground">
+                  Enter a unique studio number (letters and numbers only)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="room_grade">Room Grade *</Label>
+                <Select
+                  value={formData.room_grade_id}
+                  onValueChange={(value) => updateFormData('room_grade_id', value)}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select room grade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roomGrades
+                      .filter(grade => grade.is_active)
+                      .map(grade => (
+                        <SelectItem key={grade.id} value={grade.id}>
+                          {grade.name} - £{grade.weekly_rate}/week
+                          {grade.description && ` (${grade.description})`}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Choose the room grade that determines pricing and amenities
+                </p>
+              </div>
             </div>
 
-            {/* Room Grade */}
-            <div className="space-y-2">
-              <Label htmlFor="room_grade">Room Grade *</Label>
-              <Select
-                value={formData.room_grade_id}
-                onValueChange={(value) => updateFormData('room_grade_id', value)}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select room grade" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roomGrades
-                    .filter(grade => grade.is_active)
-                    .map(grade => (
-                      <SelectItem key={grade.id} value={grade.id}>
-                        {grade.name} - £{grade.weekly_rate}/week
-                        {grade.description && ` (${grade.description})`}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground">
-                Choose the room grade that determines pricing and amenities
-              </p>
+            {/* Second Row - Floor and Status */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="floor">Floor Number</Label>
+                <Input
+                  id="floor"
+                  type="number"
+                  placeholder="e.g., 1, 2, 3"
+                  value={formData.floor}
+                  onChange={(e) => updateFormData('floor', e.target.value ? parseInt(e.target.value) : '')}
+                  min="0"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Optional: Specify the floor number for this studio
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Initial Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value: StudioFormData['status']) => updateFormData('status', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="vacant">Vacant</SelectItem>
+                    <SelectItem value="occupied">Occupied</SelectItem>
+                    <SelectItem value="dirty">Dirty</SelectItem>
+                    <SelectItem value="cleaning">Cleaning</SelectItem>
+                    <SelectItem value="maintenance">Maintenance</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Set the initial status of the studio
+                </p>
+              </div>
             </div>
 
-            {/* Floor */}
-            <div className="space-y-2">
-              <Label htmlFor="floor">Floor Number</Label>
-              <Input
-                id="floor"
-                type="number"
-                placeholder="e.g., 1, 2, 3"
-                value={formData.floor}
-                onChange={(e) => updateFormData('floor', e.target.value ? parseInt(e.target.value) : '')}
-                min="0"
-              />
-              <p className="text-sm text-muted-foreground">
-                Optional: Specify the floor number for this studio
-              </p>
-            </div>
-
-            {/* Status */}
-            <div className="space-y-2">
-              <Label htmlFor="status">Initial Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value: StudioFormData['status']) => updateFormData('status', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="vacant">Vacant</SelectItem>
-                  <SelectItem value="occupied">Occupied</SelectItem>
-                  <SelectItem value="dirty">Dirty</SelectItem>
-                  <SelectItem value="cleaning">Cleaning</SelectItem>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground">
-                Set the initial status of the studio
-              </p>
-            </div>
-
-            {/* Active Status */}
-            <div className="space-y-2">
-              <Label htmlFor="is_active">Active Status</Label>
-              <Select
-                value={formData.is_active ? 'true' : 'false'}
-                onValueChange={(value) => updateFormData('is_active', value === 'true')}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="true">Active</SelectItem>
-                  <SelectItem value="false">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground">
-                Inactive studios won't appear in booking options
-              </p>
+            {/* Third Row - Active Status (centered) */}
+            <div className="flex justify-center">
+              <div className="w-full max-w-md space-y-2">
+                <Label htmlFor="is_active">Active Status</Label>
+                <Select
+                  value={formData.is_active ? 'true' : 'false'}
+                  onValueChange={(value) => updateFormData('is_active', value === 'true')}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Active</SelectItem>
+                    <SelectItem value="false">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Inactive studios won't appear in booking options
+                </p>
+              </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex justify-end space-x-4 pt-6">
+            <div className="flex justify-center space-x-4 pt-8 border-t">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleCancel}
                 disabled={isLoading}
+                className="min-w-[120px]"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="min-w-[120px]"
+                className="min-w-[140px]"
               >
                 {isLoading ? (
                   <>

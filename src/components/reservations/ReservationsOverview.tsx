@@ -8,10 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Plus, Search, Filter, MoreHorizontal, Building2, Users, Globe, Calendar } from 'lucide-react';
+import { Plus, Search, Filter, MoreHorizontal, Building2, Users, Globe, Calendar, TrendingUp, LogIn, LogOut, DollarSign, MapPin } from 'lucide-react';
 import { ApiService } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
-import { DashboardGridSkeleton, TableSkeleton } from '@/components/ui/skeleton';
+import { DashboardGridSkeleton, TableSkeleton, StatsCardSkeleton } from '@/components/ui/skeleton';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 interface Reservation {
   id: string;
@@ -52,7 +53,17 @@ interface Reservation {
 
 export default function ReservationsOverview() {
   const navigate = useNavigate();
+  const { selectedAcademicYear } = useAcademicYear();
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [stats, setStats] = useState({
+    totalBookings: 0,
+    activeBookings: 0,
+    totalRevenue: 0,
+    topBookingSource: 'N/A',
+    checkInsToday: 0,
+    checkOutsToday: 0,
+    occupancyRate: 0
+  });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -61,7 +72,8 @@ export default function ReservationsOverview() {
 
   useEffect(() => {
     fetchReservations();
-  }, []);
+    fetchStats();
+  }, [selectedAcademicYear]);
 
   const fetchReservations = async () => {
     try {
@@ -69,7 +81,7 @@ export default function ReservationsOverview() {
       console.log('Fetching reservations...');
       
       // Use a simpler query first to get basic reservation data
-      const data = await ApiService.getReservations();
+      const data = await ApiService.getReservations(selectedAcademicYear);
 
       if (!data) {
         console.error('No data returned from API');
@@ -98,6 +110,20 @@ export default function ReservationsOverview() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const statsData = await ApiService.getOTABookingStats(selectedAcademicYear);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error fetching OTA booking stats:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load booking statistics. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -160,7 +186,17 @@ export default function ReservationsOverview() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">OTA Bookings</h2>
+          <div>
+            <h2 className="text-2xl font-bold">OTA Bookings</h2>
+            <p className="text-gray-600 mt-1">
+              Manage tourist and online travel agency bookings
+              {selectedAcademicYear && selectedAcademicYear !== 'all' && (
+                <span className="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                  Academic Year: {selectedAcademicYear}
+                </span>
+              )}
+            </p>
+          </div>
           <Button disabled>
             <Plus className="mr-2 h-4 w-4" />
             New Reservation
@@ -168,7 +204,11 @@ export default function ReservationsOverview() {
         </div>
         
         {/* Stats Cards Skeleton */}
-        <DashboardGridSkeleton cards={4} />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <StatsCardSkeleton key={i} />
+          ))}
+        </div>
         
         {/* Table Skeleton */}
         <Card>
@@ -186,56 +226,109 @@ export default function ReservationsOverview() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Reservations</h2>
+        <div>
+          <h2 className="text-2xl font-bold">OTA Bookings</h2>
+          <p className="text-gray-600 mt-1">
+            Manage tourist and online travel agency bookings
+            {selectedAcademicYear && selectedAcademicYear !== 'all' && (
+              <span className="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                Academic Year: {selectedAcademicYear}
+              </span>
+            )}
+          </p>
+        </div>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
           New Reservation
         </Button>
       </div>
 
-      {/* Quick Navigation Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-
-
-        <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/students')}>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Student Bookings</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">Student List</div>
-            <p className="text-xs text-muted-foreground">
-                              View student records (redirects to Students module)
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/ota-bookings/tourists')}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Tourist Bookings</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
             <Globe className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Tourist List</div>
+            <div className="text-2xl font-bold">{stats.totalBookings}</div>
             <p className="text-xs text-muted-foreground">
-                              View and manage tourist bookings
+              Tourist reservations
             </p>
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/ota-bookings/calendar')}>
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Calendar View</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Active Bookings</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">Calendar</div>
+            <div className="text-2xl font-bold">{stats.activeBookings}</div>
             <p className="text-xs text-muted-foreground">
-                              View bookings in calendar format
+              Checked-in & confirmed
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {new Intl.NumberFormat('en-GB', {
+                style: 'currency',
+                currency: 'GBP'
+              }).format(stats.totalRevenue)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              From tourist bookings
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Top Source</CardTitle>
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold truncate">{stats.topBookingSource}</div>
+            <p className="text-xs text-muted-foreground">
+              Leading booking source
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Check-ins Today</CardTitle>
+            <LogIn className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.checkInsToday}</div>
+            <p className="text-xs text-muted-foreground">
+              Arriving today
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Check-outs Today</CardTitle>
+            <LogOut className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.checkOutsToday}</div>
+            <p className="text-xs text-muted-foreground">
+              Departing today
             </p>
           </CardContent>
         </Card>
       </div>
+
 
       {/* Filters */}
       <Card>

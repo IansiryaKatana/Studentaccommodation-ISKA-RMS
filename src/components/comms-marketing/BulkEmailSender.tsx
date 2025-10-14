@@ -31,6 +31,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { ApiService } from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { TableSkeleton, DashboardGridSkeleton } from '@/components/ui/skeleton';
 
 interface EmailTemplate {
@@ -76,6 +77,7 @@ interface Student {
 const BulkEmailSender = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { selectedAcademicYear } = useAcademicYear();
   const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -99,7 +101,7 @@ const BulkEmailSender = () => {
     target_criteria: {
       paymentStatus: 'all',
       country: 'all',
-      academicYear: 'all',
+      academicYear: selectedAcademicYear || 'all',
       hasEmail: true
     },
     scheduled_at: '',
@@ -132,7 +134,18 @@ const BulkEmailSender = () => {
         console.error('Error parsing selected student IDs:', error);
       }
     }
-  }, []);
+  }, [selectedAcademicYear]);
+
+  // Update form data when academic year changes
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      target_criteria: {
+        ...prev.target_criteria,
+        academicYear: selectedAcademicYear || 'all'
+      }
+    }));
+  }, [selectedAcademicYear]);
 
   const fetchData = async () => {
     try {
@@ -140,7 +153,7 @@ const BulkEmailSender = () => {
       const [campaignsData, templatesData, studentsData] = await Promise.all([
         ApiService.getEmailCampaigns(),
         ApiService.getEmailTemplates(),
-        ApiService.getStudents()
+        ApiService.getStudents(selectedAcademicYear)
       ]);
       
       setCampaigns(campaignsData);
@@ -293,7 +306,7 @@ const BulkEmailSender = () => {
         target_criteria: {
           paymentStatus: 'all',
           country: 'all',
-          academicYear: 'all',
+          academicYear: selectedAcademicYear || 'all',
           hasEmail: true
         },
         scheduled_at: '',

@@ -11,6 +11,8 @@ import { Save, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { ApiService } from '@/services/api';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 interface AddLeadFormData {
   name: string;
@@ -29,7 +31,9 @@ interface AddLeadFormData {
 const AddLead = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { selectedAcademicYear } = useAcademicYear();
   const [isLoading, setIsLoading] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [leadSources, setLeadSources] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [roomGrades, setRoomGrades] = useState<any[]>([]);
@@ -58,6 +62,7 @@ const AddLead = () => {
 
   const fetchFormData = async () => {
     try {
+      setIsDataLoading(true);
       const [sourcesData, usersData, roomGradesData, durationsData, optionFieldsData] = await Promise.all([
         ApiService.getLeadSources(),
         ApiService.getUsers(),
@@ -77,6 +82,8 @@ const AddLead = () => {
         description: "Failed to load form data. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsDataLoading(false);
     }
   };
 
@@ -132,7 +139,8 @@ const AddLead = () => {
         duration_months: null, // Will be set later
         notes: data.notes,
         status: 'new' as const,
-        created_by: data.assignedTo // Use assigned user as creator for now
+        created_by: data.assignedTo, // Use assigned user as creator for now
+        academic_year: selectedAcademicYear
       };
 
       await ApiService.createLead(leadData);
@@ -153,6 +161,41 @@ const AddLead = () => {
       setIsLoading(false);
     }
   };
+
+  if (isDataLoading) {
+    return (
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-48 mb-2" />
+            <Skeleton className="h-4 w-96" />
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+            <div className="flex gap-4 pt-4">
+              <Skeleton className="h-10 w-24" />
+              <Skeleton className="h-10 w-24" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

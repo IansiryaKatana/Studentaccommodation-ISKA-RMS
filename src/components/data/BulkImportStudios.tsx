@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Download, Upload, FileText, CheckCircle, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ApiService } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
@@ -253,6 +254,53 @@ const BulkImportStudios = () => {
   };
 
   const canImport = parsedData.length > 0 && validationResults.every(v => v.isValid) && !isLoading;
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-5 w-80" />
+          </div>
+        </div>
+
+        {/* Template Download Skeleton */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center">
+              <Skeleton className="h-5 w-5 mr-2" />
+              <Skeleton className="h-6 w-48" />
+            </div>
+            <Skeleton className="h-4 w-96" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-10 w-40" />
+          </CardContent>
+        </Card>
+
+        {/* File Upload Skeleton */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center">
+              <Skeleton className="h-5 w-5 mr-2" />
+              <Skeleton className="h-6 w-32" />
+            </div>
+            <Skeleton className="h-4 w-80" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <Skeleton className="h-8 w-8 mx-auto mb-2" />
+              <Skeleton className="h-4 w-48 mx-auto mb-2" />
+              <Skeleton className="h-4 w-32 mx-auto" />
+            </div>
+            <Skeleton className="h-10 w-32" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">

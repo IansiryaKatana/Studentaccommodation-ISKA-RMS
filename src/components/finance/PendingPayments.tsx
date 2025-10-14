@@ -7,7 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Search, Clock, CheckCircle, XCircle, Filter, Loader2, Eye, Check, X } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { createClient } from '@supabase/supabase-js';
 
 // Service role client singleton - outside component to prevent multiple instances
@@ -61,6 +63,8 @@ const PendingPayments: React.FC = () => {
   const [processingAction, setProcessingAction] = useState<string | null>(null);
 
 
+  const { selectedAcademicYear } = useAcademicYear();
+
   const fetchPendingPayments = async () => {
     try {
       setIsLoading(true);
@@ -70,12 +74,18 @@ const PendingPayments: React.FC = () => {
       const serviceClient = getServiceRoleClient();
       
       // Get all payments with pending approval status and non-Stripe methods
-      const { data: payments, error } = await serviceClient
+      let baseQuery = serviceClient
         .from('payments')
         .select('*')
         .in('method', ['bank_transfer', 'cash', 'check'])
         .eq('approval_status', 'pending')
         .order('created_at', { ascending: false });
+
+      if (selectedAcademicYear && selectedAcademicYear !== 'all') {
+        baseQuery = baseQuery.eq('academic_year', selectedAcademicYear);
+      }
+
+      const { data: payments, error } = await baseQuery;
 
       if (error) throw error;
 
@@ -91,7 +101,7 @@ const PendingPayments: React.FC = () => {
       // Fetch invoices for these payments
       const { data: invoices, error: invoiceError } = await serviceClient
         .from('invoices')
-        .select('id, invoice_number, total_amount, due_date, status, student_id')
+        .select('id, invoice_number, total_amount, due_date, status, student_id, academic_year')
         .in('id', invoiceIds);
 
       if (invoiceError) {
@@ -174,7 +184,7 @@ const PendingPayments: React.FC = () => {
 
   useEffect(() => {
     fetchPendingPayments();
-  }, []);
+  }, [selectedAcademicYear]);
 
   const handleApprovePayment = async (paymentId: string) => {
     try {
@@ -442,9 +452,18 @@ const PendingPayments: React.FC = () => {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin mr-2" />
-              <span>Loading pending payments...</span>
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center space-x-4 p-4 border rounded-lg">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                  <Skeleton className="h-6 w-16" />
+                  <Skeleton className="h-8 w-20" />
+                </div>
+              ))}
             </div>
           ) : filteredPayments.length === 0 ? (
             <div className="text-center py-8">

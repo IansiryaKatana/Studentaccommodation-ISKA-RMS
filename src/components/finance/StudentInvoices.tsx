@@ -21,7 +21,9 @@ import {
   CreditCard,
   FileText
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ApiService, Invoice, Student } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import PaymentEventService from '@/services/paymentEventService';
@@ -58,7 +60,13 @@ const StudentInvoices = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const { selectedAcademicYear } = useAcademicYear();
+
   useEffect(() => {
+    // Clear existing data before fetching to prevent stale state
+    setStudentInvoices([]);
+    setLoading(true);
+    
     fetchStudentInvoices();
     
     // Listen for payment events to refresh data
@@ -72,12 +80,12 @@ const StudentInvoices = () => {
     return () => {
       PaymentEventService.getInstance().unregisterListener('finance-student-invoices');
     };
-  }, []);
+  }, [selectedAcademicYear]);
 
   const fetchStudentInvoices = async () => {
     try {
       setLoading(true);
-      const students = await ApiService.getStudents();
+      const students = await ApiService.getStudents(selectedAcademicYear);
       
       // Create student invoices using ACTUAL invoice data from invoices table
       const invoices: StudentInvoice[] = await Promise.all(
@@ -86,7 +94,7 @@ const StudentInvoices = () => {
             // Get ACTUAL invoices for this student from the invoices table
             let actualInvoices: any[] = [];
             try {
-              actualInvoices = await ApiService.getInvoicesByStudentId(student.id);
+              actualInvoices = await ApiService.getInvoicesByStudentId(student.id, selectedAcademicYear);
             } catch (error) {
               console.log(`No invoices found for student ${student.id}`);
             }
@@ -345,14 +353,33 @@ const StudentInvoices = () => {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
-                      <span className="ml-2">Loading student invoices...</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-20" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-16" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-20" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-16" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-6 w-20" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </>
               ) : filteredInvoices.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">

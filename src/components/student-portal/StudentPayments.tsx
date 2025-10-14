@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreditCard, FileText, Calendar, Loader2 } from 'lucide-react';
 import { ApiService, Invoice, Payment } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useToast } from '@/hooks/use-toast';
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { useAuth } from '@/contexts/AuthContext';
@@ -52,9 +53,11 @@ const StudentPayments = ({ studentId }: StudentPaymentsProps) => {
   const [showPaymentDialog, setShowPaymentDialog] = useState<string | null>(null);
   const [paymentMode, setPaymentMode] = useState<'direct' | 'flexible'>('direct');
 
+  const { selectedAcademicYear } = useAcademicYear();
+
   useEffect(() => {
     fetchPaymentData();
-  }, [studentId]);
+  }, [studentId, selectedAcademicYear]);
 
 
   // Create payment using service role client
@@ -328,7 +331,7 @@ const StudentPayments = ({ studentId }: StudentPaymentsProps) => {
       // Get invoices data
       let invoicesData = [];
       try {
-        const allInvoices = await ApiService.getInvoicesByStudentId(studentId);
+        const allInvoices = await ApiService.getInvoicesByStudentId(studentId, selectedAcademicYear);
         
         // Keep all invoices to preserve payment history
         invoicesData = allInvoices;

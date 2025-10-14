@@ -115,7 +115,7 @@ export class EmailService {
             </div>
             
             <p>This payment has been recorded in your account. If you have any questions, please contact our support team.</p>
-            <p>Best regards,<br>ISKA RMS Team</p>
+            <p>Best regards,<br>{{company_name}} Team</p>
           </div>
           <div class="footer">
             <p>This is an automated message. Please do not reply to this email.</p>
@@ -141,7 +141,7 @@ Payment Details:
 This payment has been recorded in your account. If you have any questions, please contact our support team.
 
 Best regards,
-ISKA RMS Team
+{{company_name}} Team
 
 This is an automated message. Please do not reply to this email.
     `;
@@ -186,7 +186,7 @@ This is an automated message. Please do not reply to this email.
             </div>
             
             <p>Please log into the ISKA RMS system to view complete payment details and update any necessary records.</p>
-            <p>Best regards,<br>ISKA RMS System</p>
+            <p>Best regards,<br>{{company_name}} System</p>
           </div>
           <div class="footer">
             <p>This is an automated notification from ISKA RMS.</p>
@@ -212,7 +212,7 @@ Payment Details:
 Please log into the ISKA RMS system to view complete payment details and update any necessary records.
 
 Best regards,
-ISKA RMS System
+{{company_name}} System
 
 This is an automated notification from ISKA RMS.
     `;

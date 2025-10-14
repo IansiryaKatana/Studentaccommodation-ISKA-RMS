@@ -7,14 +7,12 @@ import UserDetail from '@/components/settings/UserDetail';
 import AddUser from '@/components/settings/AddUser';
 import EditUser from '@/components/settings/EditUser';
 import SystemPreferences from '@/components/settings/SystemPreferences';
-import SecuritySettings from '@/components/settings/SecuritySettings';
-import IntegrationSettings from '@/components/settings/IntegrationSettings';
-import NotificationSettings from '@/components/settings/NotificationSettings';
 import ConfigManagement from '@/components/settings/ConfigManagement';
 import StudentAccounts from '@/components/settings/StudentAccounts';
 import ModuleAccessConfig from '@/components/settings/ModuleAccessConfig';
 import BulkUploadStudents from '@/components/settings/BulkUploadStudents';
 import LeadsSettings from '@/components/settings/LeadsSettings';
+import WebhookManagement from '@/components/settings/WebhookManagement';
 
 const SettingsModule = () => {
   return (
@@ -26,13 +24,11 @@ const SettingsModule = () => {
       <Route path="/users/:id/edit" element={<EditUser />} />
       <Route path="/student-accounts" element={<StudentAccounts />} />
       <Route path="/system" element={<SystemPreferences />} />
-      <Route path="/security" element={<SecuritySettings />} />
-      <Route path="/integrations" element={<IntegrationSettings />} />
-      <Route path="/notifications" element={<NotificationSettings />} />
       <Route path="/config" element={<ConfigManagement />} />
       <Route path="/module-access" element={<ModuleAccessConfig />} />
       <Route path="/bulk-upload-students" element={<BulkUploadStudents />} />
       <Route path="/leads" element={<LeadsSettings />} />
+      <Route path="/webhooks" element={<WebhookManagement />} />
     </Routes>
   );
 };

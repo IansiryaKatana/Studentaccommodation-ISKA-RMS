@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ApiService, Reservation, Invoice, Payment, Refund } from '@/services/api';
 import PaymentEventService, { PaymentEvent } from '@/services/paymentEventService';
 import { DashboardGridSkeleton, TableSkeleton, ChartSkeleton } from '@/components/ui/skeleton';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 interface FinancialSummary {
   totalRevenue: number;
@@ -44,6 +45,7 @@ interface DailyRevenue {
 
 const FinanceOverview = () => {
   const { toast } = useToast();
+  const { selectedAcademicYear } = useAcademicYear();
   const [isLoading, setIsLoading] = useState(false);
   const [summary, setSummary] = useState<FinancialSummary>({
     totalRevenue: 0,
@@ -71,7 +73,7 @@ const FinanceOverview = () => {
       // Cleanup: unregister listener when component unmounts
       paymentEventService.unregisterListener('FinanceOverview');
     };
-  }, [timeRange]);
+  }, [timeRange, selectedAcademicYear]);
 
   // Handle payment events for real-time updates
   const handlePaymentEvent = async (event: PaymentEvent) => {
@@ -91,9 +93,9 @@ const FinanceOverview = () => {
       
       // Fetch all data sources
       const [reservations, invoices, students, refunds] = await Promise.all([
-        ApiService.getReservations(),
-        ApiService.getInvoices(),
-        ApiService.getStudentsWithDetails(),
+        ApiService.getReservations(selectedAcademicYear),
+        ApiService.getInvoices(selectedAcademicYear),
+        ApiService.getStudentsWithDetails({ academicYear: selectedAcademicYear }),
         ApiService.getRefunds().catch(() => []) // Handle case where refunds table might not exist
       ]);
       

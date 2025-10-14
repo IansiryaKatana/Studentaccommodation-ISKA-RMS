@@ -163,6 +163,29 @@ try {
         }
     }
 
+    // Get current academic year from database
+    $academicYear = '2025/2026'; // Fallback default
+    $yearCh = curl_init();
+    curl_setopt($yearCh, CURLOPT_URL, $SUPABASE_URL . '/rest/v1/academic_years?is_current=eq.true&select=name');
+    curl_setopt($yearCh, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($yearCh, CURLOPT_HTTPHEADER, [
+        'apikey: ' . $SUPABASE_SERVICE_ROLE_KEY,
+        'Authorization: Bearer ' . $SUPABASE_SERVICE_ROLE_KEY
+    ]);
+    
+    $yearResponse = curl_exec($yearCh);
+    $yearHttpCode = curl_getinfo($yearCh, CURLINFO_HTTP_CODE);
+    curl_close($yearCh);
+    
+    if ($yearHttpCode === 200 && $yearResponse) {
+        $yearData = json_decode($yearResponse, true);
+        if (!empty($yearData) && isset($yearData[0]['name'])) {
+            $academicYear = $yearData[0]['name'];
+        }
+    }
+    
+    $logEntry .= "Academic year to use: " . $academicYear . "\n";
+
     // Create lead data
     $leadData = [
         'first_name' => $firstName,
@@ -173,7 +196,8 @@ try {
         'status' => 'new',
         'notes' => !empty($message) ? $message : null,
         'room_grade_preference_id' => $roomGradeId,
-        'duration_type_preference_id' => $durationId
+        'duration_type_preference_id' => $durationId,
+        'academic_year' => $academicYear // Use current academic year from database
     ];
 
     // Remove null values

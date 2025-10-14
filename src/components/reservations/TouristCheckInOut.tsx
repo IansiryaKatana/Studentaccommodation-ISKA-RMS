@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ApiService, Reservation, TouristProfile, Studio } from '@/services/api';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface TouristReservationWithDetails extends Reservation {
   tourist_profiles: TouristProfile;
@@ -171,9 +172,131 @@ const TouristCheckInOut: React.FC = () => {
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-          <span className="ml-2 text-gray-500">Loading reservation details...</span>
+        {/* Header Skeleton */}
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-10 w-10" />
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-5 w-48" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content Skeleton */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Reservation Details Skeleton */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tourist Information Skeleton */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-16 mb-2" />
+                    <Skeleton className="h-4 w-48" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Studio Information Skeleton */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-2" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar Skeleton */}
+          <div className="space-y-6">
+            {/* Status Card Skeleton */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-24" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-1" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Check-in/out Form Skeleton */}
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-32" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Skeleton className="h-4 w-16 mb-2" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
+                <div className="flex gap-2">
+                  <Skeleton className="h-10 w-24" />
+                  <Skeleton className="h-10 w-24" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );

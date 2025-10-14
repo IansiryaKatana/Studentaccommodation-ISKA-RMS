@@ -17,6 +17,7 @@ export interface FileRecord {
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
+  public_url?: string; // Added for compatibility with branding component
 }
 
 export interface FileShare {
@@ -500,10 +501,7 @@ export class FileStorageService {
       console.log('📤 Uploading to Supabase Storage...');
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(bucket)
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
+        .upload(filePath, file);
 
       if (uploadError) {
         console.error('❌ Storage upload error:', uploadError);
@@ -557,7 +555,15 @@ export class FileStorageService {
 
       console.log('✅ File record created in database');
       console.log('File record:', fileRecord);
-      return fileRecord;
+      
+      // Add public URL to the returned record
+      const recordWithUrl = {
+        ...fileRecord,
+        public_url: urlData.publicUrl
+      };
+      
+      console.log('✅ File record with public URL:', recordWithUrl);
+      return recordWithUrl;
     } catch (error) {
       console.error('❌ Error uploading file:', error);
       console.error('Full error object:', error);

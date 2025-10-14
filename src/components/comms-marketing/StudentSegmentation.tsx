@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ApiService } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 interface Student {
   id: string;
@@ -58,6 +59,7 @@ interface SegmentationCriteria {
 const StudentSegmentation = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { selectedAcademicYear } = useAcademicYear();
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,7 +71,7 @@ const StudentSegmentation = () => {
 
   useEffect(() => {
     fetchInitialData();
-  }, []);
+  }, [selectedAcademicYear]);
 
   useEffect(() => {
     applyFilters();
@@ -79,8 +81,8 @@ const StudentSegmentation = () => {
     try {
       setLoading(true);
       
-      // Fetch all students
-      const studentsData = await ApiService.getStudents();
+      // Fetch students for selected academic year
+      const studentsData = await ApiService.getStudents(selectedAcademicYear);
       setStudents(studentsData);
       setFilteredStudents(studentsData);
 
@@ -131,10 +133,7 @@ const StudentSegmentation = () => {
       filtered = filtered.filter(student => student.country === criteria.country);
     }
 
-    // Apply academic year filter
-    if (criteria.academicYear && criteria.academicYear !== 'all') {
-      filtered = filtered.filter(student => student.academic_year === criteria.academicYear);
-    }
+    // Academic year filtering is now handled by the global context
 
     // Apply year of study filter
     if (criteria.yearOfStudy && criteria.yearOfStudy !== 'all') {

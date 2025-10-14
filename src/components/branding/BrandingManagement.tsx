@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { ApiService, Branding } from '@/services/api';
 import { useBranding } from '@/contexts/BrandingContext';
+import { UploadService } from '@/services/uploadService';
 import {
   Palette,
   Building,
@@ -21,7 +22,9 @@ import {
   Eye,
   Loader2,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  X,
+  Trash2
 } from 'lucide-react';
 
 const BrandingManagement = () => {
@@ -31,6 +34,10 @@ const BrandingManagement = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [localBranding, setLocalBranding] = useState<Branding | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (branding) {
@@ -68,19 +75,99 @@ const BrandingManagement = () => {
     });
   };
 
-  const handleFileUpload = (field: 'logo_url' | 'favicon_url', file: File) => {
-    // In a real implementation, you would upload the file to Supabase Storage
-    // For now, we'll just simulate the upload
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (localBranding && e.target?.result) {
-        setLocalBranding({
-          ...localBranding,
-          [field]: e.target.result as string
+  const handleFileUpload = async (field: 'logo_url' | 'favicon_url', file: File) => {
+    if (!localBranding) return;
+
+    const isLogo = field === 'logo_url';
+    const setUploading = isLogo ? setUploadingLogo : setUploadingFavicon;
+    
+    try {
+      setUploading(true);
+      
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/svg+xml'];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('Please upload a valid image file (JPEG, PNG, GIF, or SVG)');
+      }
+
+      // Validate file size (5MB max)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        throw new Error('File size must be less than 5MB');
+      }
+
+      // Upload file using simplified service
+      const uploadResult = await UploadService.uploadFile(file, 'branding');
+      
+      console.log('Upload result:', uploadResult);
+      
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Upload failed');
+      }
+      
+      // Update local branding with the new URL
+      const updatedBranding = {
+        ...localBranding,
+        [field]: uploadResult.public_url
+      };
+      setLocalBranding(updatedBranding);
+
+      // Auto-save the branding data after successful upload
+      try {
+        console.log('Auto-saving branding:', updatedBranding);
+        await updateBranding(updatedBranding);
+        console.log('Branding saved successfully');
+        toast({
+          title: "Upload Successful",
+          description: `${isLogo ? 'Logo' : 'Favicon'} uploaded and saved successfully.`,
+        });
+      } catch (saveError) {
+        console.error('Error auto-saving branding:', saveError);
+        toast({
+          title: "Upload Successful",
+          description: `${isLogo ? 'Logo' : 'Favicon'} uploaded but failed to save. Please click 'Save Changes'.`,
+          variant: "destructive",
         });
       }
-    };
-    reader.readAsDataURL(file);
+
+    } catch (error) {
+      console.error(`Error uploading ${field}:`, error);
+      toast({
+        title: "Upload Failed",
+        description: error instanceof Error ? error.message : `Failed to upload ${isLogo ? 'logo' : 'favicon'}.`,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileInputChange = (field: 'logo_url' | 'favicon_url', event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleFileUpload(field, file);
+    }
+    // Reset the input value so the same file can be selected again
+    event.target.value = '';
+  };
+
+  const handleRemoveFile = (field: 'logo_url' | 'favicon_url') => {
+    if (!localBranding) return;
+    
+    setLocalBranding({
+      ...localBranding,
+      [field]: null
+    });
+
+    toast({
+      title: "File Removed",
+      description: `${field === 'logo_url' ? 'Logo' : 'Favicon'} removed successfully.`,
+    });
+  };
+
+  const triggerFileInput = (field: 'logo_url' | 'favicon_url') => {
+    const inputRef = field === 'logo_url' ? logoInputRef : faviconInputRef;
+    inputRef.current?.click();
   };
 
   if (isLoading) {
@@ -196,7 +283,7 @@ const BrandingManagement = () => {
               <span>Visual Identity</span>
             </CardTitle>
             <CardDescription>
-              Colors, logos, and visual branding elements
+              Colors, logos, and visual branding elements. Primary color controls login page buttons and input focus rings.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -217,6 +304,9 @@ const BrandingManagement = () => {
                     placeholder="#3b82f6"
                   />
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Used for login buttons, links, and input focus rings
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="secondaryColor">Secondary Color</Label>
@@ -234,6 +324,9 @@ const BrandingManagement = () => {
                     placeholder="#64748b"
                   />
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Reserved for future use (doesn't affect sidebar)
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="accentColor">Accent Color</Label>
@@ -251,6 +344,9 @@ const BrandingManagement = () => {
                     placeholder="#f59e0b"
                   />
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Reserved for future use (doesn't affect sidebar)
+                </p>
               </div>
             </div>
 
@@ -266,39 +362,155 @@ const BrandingManagement = () => {
 
             <Separator />
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Company Logo</Label>
-                <div className="flex items-center space-x-4">
-                  {localBranding?.logo_url && (
-                    <img
-                      src={localBranding.logo_url}
-                      alt="Company Logo"
-                      className="h-12 w-auto object-contain"
-                    />
+            <div className="space-y-6">
+              {/* Company Logo Section */}
+              <div className="space-y-3">
+                <Label className="text-base font-medium">Company Logo</Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                  {localBranding?.logo_url ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <img
+                            src={localBranding.logo_url}
+                            alt="Company Logo"
+                            className="h-16 w-auto object-contain max-w-full"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">Current Logo</p>
+                            <p className="text-xs text-gray-500">Click to replace or remove</p>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => triggerFileInput('logo_url')}
+                            disabled={uploadingLogo}
+                          >
+                            {uploadingLogo ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Upload className="h-4 w-4 mr-2" />
+                            )}
+                            Replace
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRemoveFile('logo_url')}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <Image className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-sm text-gray-600 mb-3">No logo uploaded</p>
+                      <Button
+                        variant="outline"
+                        onClick={() => triggerFileInput('logo_url')}
+                        disabled={uploadingLogo}
+                      >
+                        {uploadingLogo ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4 mr-2" />
+                        )}
+                        Upload Logo
+                      </Button>
+                    </div>
                   )}
-                  <Button variant="outline" size="sm">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Logo
-                  </Button>
                 </div>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleFileInputChange('logo_url', e)}
+                  className="hidden"
+                />
               </div>
 
-              <div className="space-y-2">
-                <Label>Favicon</Label>
-                <div className="flex items-center space-x-4">
-                  {localBranding?.favicon_url && (
-                    <img
-                      src={localBranding.favicon_url}
-                      alt="Favicon"
-                      className="h-8 w-8 object-contain"
-                    />
+              {/* Favicon Section */}
+              <div className="space-y-3">
+                <Label className="text-base font-medium">Favicon</Label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                  {localBranding?.favicon_url ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <img
+                            src={localBranding.favicon_url}
+                            alt="Favicon"
+                            className="h-12 w-12 object-contain"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">Current Favicon</p>
+                            <p className="text-xs text-gray-500">Click to replace or remove</p>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => triggerFileInput('favicon_url')}
+                            disabled={uploadingFavicon}
+                          >
+                            {uploadingFavicon ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Upload className="h-4 w-4 mr-2" />
+                            )}
+                            Replace
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRemoveFile('favicon_url')}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <Image className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-sm text-gray-600 mb-3">No favicon uploaded</p>
+                      <Button
+                        variant="outline"
+                        onClick={() => triggerFileInput('favicon_url')}
+                        disabled={uploadingFavicon}
+                      >
+                        {uploadingFavicon ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4 mr-2" />
+                        )}
+                        Upload Favicon
+                      </Button>
+                    </div>
                   )}
-                  <Button variant="outline" size="sm">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Favicon
-                  </Button>
                 </div>
+                <input
+                  ref={faviconInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleFileInputChange('favicon_url', e)}
+                  className="hidden"
+                />
               </div>
             </div>
           </CardContent>
@@ -336,6 +548,7 @@ const BrandingManagement = () => {
           </div>
         </CardContent>
       </Card>
+
 
       {/* Preview Section */}
       {previewMode && (

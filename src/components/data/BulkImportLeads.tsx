@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { ApiService, Lead } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import {
   Upload,
   Download,
@@ -48,6 +49,7 @@ interface ValidationError {
 
 const BulkImportLeads = () => {
   const { toast } = useToast();
+  const { selectedAcademicYear } = useAcademicYear();
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<LeadImportData[]>([]);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
@@ -232,7 +234,8 @@ const BulkImportLeads = () => {
           move_in_date: leadData.move_in_date || undefined,
           duration_months: leadData.duration_months || undefined,
           notes: leadData.notes?.trim() || undefined,
-          created_by: '1' // Default admin user ID
+          created_by: '1', // Default admin user ID
+          academic_year: selectedAcademicYear !== 'all' ? selectedAcademicYear : '2025/2026' // Use selected academic year
         };
 
         await ApiService.createLead(createLeadData);

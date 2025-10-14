@@ -59,12 +59,20 @@ export async function retryWithBackoff<T>(
  */
 export function formatCurrency(amount: number | undefined | null): string {
   if (amount === undefined || amount === null || isNaN(amount)) {
-    return '$0.00';
+    return '£0.00'; // Default to GBP symbol
   }
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
+  
+  // Try to use dynamic currency service, fallback to GBP
+  try {
+    const { CurrencyService } = require('@/services/currencyService');
+    return CurrencyService.format(amount);
+  } catch (error) {
+    // Fallback to GBP formatting
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: 'GBP',
+    }).format(amount);
+  }
 }
 
 /**

@@ -43,6 +43,8 @@ import {
 import { TableSkeleton, ListSkeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { ApiService, StudentWithUser } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { useModuleStyles } from '@/contexts/ModuleStylesContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -81,6 +83,8 @@ interface StudentWithDetails extends StudentWithUser {
 const StudentsList = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { selectedAcademicYear } = useAcademicYear();
+  const { getModuleGradient } = useModuleStyles();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [students, setStudents] = useState<StudentWithDetails[]>([]);
@@ -89,13 +93,13 @@ const StudentsList = () => {
 
   useEffect(() => {
     fetchStudents();
-  }, []);
+  }, [selectedAcademicYear]);
 
   const fetchStudents = async () => {
     try {
       setIsLoading(true);
       // Use optimized single query instead of N+1 queries
-      const data = await ApiService.getStudentsWithDetails();
+      const data = await ApiService.getStudentsWithDetails({ academicYear: selectedAcademicYear });
       
       // Transform data to match expected interface
       const studentsWithDetails = data.map(student => ({
@@ -548,31 +552,56 @@ const StudentsList = () => {
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!studentToDelete} onOpenChange={() => setStudentToDelete(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Student</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete <strong>{studentToDelete?.user?.first_name || studentToDelete?.first_name} {studentToDelete?.user?.last_name || studentToDelete?.last_name}</strong>?
-              <br /><br />
-              This action will permanently delete:
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Student record and profile</li>
-                <li>All associated invoices ({studentToDelete?.invoices?.length || 0} invoices)</li>
-                <li>All reservation installments</li>
-                <li>All student documents</li>
-                <li>All student agreements</li>
-                <li>All payment records</li>
-                {studentToDelete?.studio_id && <li>Studio assignment (studio will be set to vacant if no other active reservations)</li>}
-              </ul>
-              <br />
-              This action cannot be undone.
+            <div 
+              className="flex items-center justify-center w-12 h-12 rounded-full mb-4"
+              style={{
+                background: getModuleGradient('students-gradient')
+              }}
+            >
+              <GraduationCap className="h-6 w-6 text-white" />
+            </div>
+            <AlertDialogTitle className="text-xl font-semibold">
+              Delete Student
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-4 text-base">
+              <p>
+                Are you sure you want to delete{' '}
+                <strong className="text-foreground font-semibold">
+                  {studentToDelete?.user?.first_name || studentToDelete?.first_name} {studentToDelete?.user?.last_name || studentToDelete?.last_name}
+                </strong>?
+              </p>
+              
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                <p className="text-sm font-semibold text-destructive mb-2">⚠️ This action will permanently delete:</p>
+                <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                  <li>Student record and profile</li>
+                  <li>All associated invoices ({studentToDelete?.invoices?.length || 0} invoices)</li>
+                  <li>All reservation installments</li>
+                  <li>All student documents</li>
+                  <li>All student agreements</li>
+                  <li>All payment records</li>
+                  {studentToDelete?.studio_id && (
+                    <li>Studio assignment (studio will be set to vacant if no other active reservations)</li>
+                  )}
+                </ul>
+              </div>
+              
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-400">
+                  🚨 This action cannot be undone.
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogCancel className="flex-1 sm:flex-1" disabled={isDeleting}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction 
               onClick={() => studentToDelete && handleDeleteStudent(studentToDelete.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="flex-1 sm:flex-1 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               disabled={isDeleting}
             >
               {isDeleting ? (
@@ -581,7 +610,10 @@ const StudentsList = () => {
                   Deleting...
                 </>
               ) : (
-                'Delete Student'
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Student
+                </>
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

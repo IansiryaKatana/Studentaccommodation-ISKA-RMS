@@ -9,16 +9,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarIcon, Loader2, User, MapPin, CreditCard, FileText } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { format, differenceInDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { ApiService, TouristBookingSource, TouristGuestStatus } from '@/services/api';
 import { supabase } from '@/integrations/supabase/client';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import StudioSelect from '@/components/ui/studio-select';
 import StudioOccupancyDialog from '@/components/ui/studio-occupancy-dialog';
 
 const AddTouristBooking = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { selectedAcademicYear } = useAcademicYear();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     // Tourist Information
@@ -49,6 +52,7 @@ const AddTouristBooking = () => {
   const [studios, setStudios] = useState<any[]>([]);
   const [bookingSources, setBookingSources] = useState<TouristBookingSource[]>([]);
   const [guestStatuses, setGuestStatuses] = useState<TouristGuestStatus[]>([]);
+  const [isDataLoading, setIsDataLoading] = useState(true);
 
   // Studio occupancy dialog state
   const [occupancyDialog, setOccupancyDialog] = useState({
@@ -64,6 +68,7 @@ const AddTouristBooking = () => {
   useEffect(() => {
     const fetchFormData = async () => {
       try {
+        setIsDataLoading(true);
         const [studiosData, bookingSourcesData, guestStatusesData] = await Promise.all([
           ApiService.getAvailableStudios(),
           ApiService.getTouristBookingSources(),
@@ -80,6 +85,8 @@ const AddTouristBooking = () => {
           description: "Failed to load form data. Please refresh the page.",
           variant: "destructive",
         });
+      } finally {
+        setIsDataLoading(false);
       }
     };
 
@@ -181,7 +188,8 @@ Booking Source: ${formData.bookingSource}
 Guest Status: ${formData.guestStatus}
 
 ${formData.notes}`,
-        created_by: '423b2f89-ed35-4537-866e-d4fe702e577c' // Admin user ID
+        created_by: '423b2f89-ed35-4537-866e-d4fe702e577c', // Admin user ID
+        academic_year: selectedAcademicYear
       };
 
       // Use the new API method to create tourist reservation
@@ -240,6 +248,127 @@ ${formData.notes}`,
       setIsLoading(false);
     }
   };
+
+  if (isDataLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-6">
+          <div className="mb-8">
+            <Skeleton className="h-10 w-80 mb-2" />
+            <Skeleton className="h-6 w-96" />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Form Skeleton */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Tourist Information Skeleton */}
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-48" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Skeleton className="h-4 w-20 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div>
+                      <Skeleton className="h-4 w-20 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Skeleton className="h-4 w-16 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div>
+                      <Skeleton className="h-4 w-20 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Booking Information Skeleton */}
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-48" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Skeleton className="h-4 w-24 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div>
+                      <Skeleton className="h-4 w-20 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Skeleton className="h-4 w-24 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div>
+                      <Skeleton className="h-4 w-20 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Pricing Information Skeleton */}
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-48" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Skeleton className="h-4 w-24 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div>
+                      <Skeleton className="h-4 w-20 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div>
+                      <Skeleton className="h-4 w-20 mb-2" />
+                      <Skeleton className="h-10 w-full" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Action Buttons Skeleton */}
+              <div className="flex gap-4">
+                <Skeleton className="h-10 w-24" />
+                <Skeleton className="h-10 w-32" />
+              </div>
+            </div>
+
+            {/* Summary Skeleton */}
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-32" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

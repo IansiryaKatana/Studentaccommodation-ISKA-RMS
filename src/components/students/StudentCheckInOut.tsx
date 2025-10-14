@@ -21,6 +21,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { ApiService } from '@/services/api';
 import { format } from 'date-fns';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Student {
   id: string;
@@ -43,6 +45,7 @@ interface Student {
 
 const StudentCheckInOut = () => {
   const { toast } = useToast();
+  const { selectedAcademicYear } = useAcademicYear();
   const [searchTerm, setSearchTerm] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -61,12 +64,12 @@ const StudentCheckInOut = () => {
 
   useEffect(() => {
     fetchStudents();
-  }, []);
+  }, [selectedAcademicYear]);
 
   const fetchStudents = async () => {
     try {
       setIsLoading(true);
-      const studentsData = await ApiService.getStudents();
+      const studentsData = await ApiService.getStudents(selectedAcademicYear);
       // Filter and transform data for check-in/out purposes
       const transformedStudents = studentsData.map(student => ({
         ...student,
@@ -261,7 +264,28 @@ const StudentCheckInOut = () => {
 
             <TabsContent value="checkin" className="space-y-3">
               {isLoading ? (
-                <div className="text-center py-8">Loading students...</div>
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Card key={i}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <Skeleton className="h-10 w-10 rounded-full" />
+                            <div className="space-y-1">
+                              <Skeleton className="h-4 w-32" />
+                              <Skeleton className="h-3 w-48" />
+                              <Skeleton className="h-3 w-24" />
+                            </div>
+                          </div>
+                          <div className="text-right space-y-1">
+                            <Skeleton className="h-6 w-20" />
+                            <Skeleton className="h-3 w-24" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               ) : pendingCheckIns.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   No students pending check-in
@@ -273,7 +297,28 @@ const StudentCheckInOut = () => {
 
             <TabsContent value="checkout" className="space-y-3">
               {isLoading ? (
-                <div className="text-center py-8">Loading students...</div>
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Card key={i}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <Skeleton className="h-10 w-10 rounded-full" />
+                            <div className="space-y-1">
+                              <Skeleton className="h-4 w-32" />
+                              <Skeleton className="h-3 w-48" />
+                              <Skeleton className="h-3 w-24" />
+                            </div>
+                          </div>
+                          <div className="text-right space-y-1">
+                            <Skeleton className="h-6 w-20" />
+                            <Skeleton className="h-3 w-24" />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               ) : checkedInStudents.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   No students available for check-out

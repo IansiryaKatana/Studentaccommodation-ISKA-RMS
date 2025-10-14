@@ -23,11 +23,13 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Phone, Mail, User, Upload, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ApiService } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useToast } from '@/hooks/use-toast';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { Lead } from '@/services/api';
 import { StatCardsCarousel } from '@/components/leads/StatCardsCarousel';
+import { TableSkeleton } from '@/components/ui/skeleton';
 
 export default function LeadsList() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -45,16 +47,17 @@ export default function LeadsList() {
   
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { selectedAcademicYear } = useAcademicYear();
 
   useEffect(() => {
-    fetchLeads();
+    fetchLeads(selectedAcademicYear);
     fetchLeadSources();
-  }, []);
+  }, [selectedAcademicYear]);
 
-  const fetchLeads = async () => {
+  const fetchLeads = async (academicYear?: string) => {
     try {
       setLoading(true);
-      const data = await ApiService.getLeads();
+      const data = await ApiService.getLeads(academicYear);
       setLeads(data || []);
     } catch (error) {
       console.error('Error fetching leads:', error);
@@ -158,27 +161,14 @@ export default function LeadsList() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Leads</h2>
-          <div className="flex gap-2">
-            <Link to="/leads/import">
-              <Button variant="outline" disabled>
-                <Upload className="mr-2 h-4 w-4" />
-                Import CSV
-              </Button>
-            </Link>
-            <Button disabled>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Lead
-            </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Leads Management</h1>
+            <p className="text-muted-foreground">Loading leads data...</p>
           </div>
         </div>
-        <div className="animate-pulse space-y-4">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 bg-gray-200 rounded"></div>
-          ))}
-        </div>
+        <TableSkeleton />
       </div>
     );
   }
@@ -424,3 +414,4 @@ export default function LeadsList() {
     </div>
   );
 }
+

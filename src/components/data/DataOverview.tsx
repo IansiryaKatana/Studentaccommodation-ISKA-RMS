@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Database, Users, Calendar, Building, DollarSign, TrendingUp, TrendingDown, Loader2, AlertTriangle, ArrowRight, Upload } from 'lucide-react';
+import { Database, Users, Calendar, Building, DollarSign, TrendingUp, TrendingDown, Loader2, AlertTriangle, ArrowRight, Upload, Clock } from 'lucide-react';
 import { ApiService } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
@@ -13,6 +13,7 @@ const DataOverview = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
+    academicYears: 0,
     durations: 0,
     roomGrades: 0,
     pricingMatrix: 0,
@@ -71,6 +72,7 @@ const DataOverview = () => {
 
       // Use Promise.allSettled to handle individual failures gracefully
       const results = await Promise.allSettled([
+        fetchWithFallback(() => ApiService.getAcademicYears()),
         fetchWithFallback(() => ApiService.getDurations()),
         fetchWithFallback(() => ApiService.getRoomGrades()),
         fetchWithFallback(() => ApiService.getPricingMatrix()),
@@ -84,6 +86,7 @@ const DataOverview = () => {
 
       // Extract results, using fallback for failed promises
       const [
+        academicYears,
         durations,
         roomGrades,
         pricingMatrix,
@@ -99,6 +102,7 @@ const DataOverview = () => {
 
       // Set stats with fallback to 0 if all data is empty
       const finalStats = {
+        academicYears: academicYears.length || 0,
         durations: durations.length || 0,
         roomGrades: roomGrades.length || 0,
         pricingMatrix: pricingMatrix.length || 0,
@@ -131,9 +135,17 @@ const DataOverview = () => {
 
   const managementModules = [
     {
+      title: 'Academic Years',
+      description: 'Manage academic year definitions and periods',
+      icon: Calendar,
+      path: '/data/academic-years',
+      count: `${stats.academicYears || 0} years`,
+      color: 'bg-indigo-500'
+    },
+    {
       title: 'Durations',
       description: 'Manage booking duration types (45-weeks, 51-weeks, etc.)',
-      icon: Calendar,
+      icon: Clock,
       path: '/data/durations',
       count: `${stats.durations} types`,
       color: 'bg-blue-500'

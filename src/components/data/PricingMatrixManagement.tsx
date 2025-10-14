@@ -13,6 +13,7 @@ import {
   Edit,
   Loader2
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 const PricingMatrixManagement = () => {
@@ -59,9 +60,24 @@ const PricingMatrixManagement = () => {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8">
-              <Loader2 className="mx-auto h-6 w-6 animate-spin text-gray-400" />
-              <p className="mt-2 text-sm text-gray-500">Loading pricing matrix...</p>
+            <div className="space-y-4">
+              {/* Table Header Skeleton */}
+              <div className="grid grid-cols-4 gap-4 p-3 border-b">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+              
+              {/* Table Rows Skeleton */}
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="grid grid-cols-4 gap-4 p-3 border-b">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-8 w-8" />
+                </div>
+              ))}
             </div>
           ) : (
             <div className="overflow-x-auto">

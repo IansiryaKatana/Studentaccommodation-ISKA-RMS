@@ -8,8 +8,10 @@ import {
 } from 'lucide-react';
 import { ApiService } from '@/services/api';
 import { DashboardGridSkeleton, TableSkeleton } from '@/components/ui/skeleton';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 
 const StudentsOverview = () => {
+  const { selectedAcademicYear } = useAcademicYear();
   const [stats, setStats] = useState({
     totalStudents: 0,
     activeStudents: 0,
@@ -23,13 +25,13 @@ const StudentsOverview = () => {
 
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [selectedAcademicYear]);
 
   const fetchStats = async () => {
     try {
       setIsLoading(true);
       // Use optimized query that includes studio details
-      const students = await ApiService.getStudentsWithDetails();
+      const students = await ApiService.getStudentsWithDetails({ academicYear: selectedAcademicYear });
       
       // Calculate basic stats
       const totalStudents = students.length;
@@ -43,10 +45,10 @@ const StudentsOverview = () => {
       
       try {
         // Get all invoices to calculate total revenue
-        const allInvoices = await ApiService.getInvoices();
+        const allInvoices = await ApiService.getInvoices(selectedAcademicYear);
         
         // Get all student reservations to calculate revenue
-        const allReservations = await ApiService.getReservations();
+        const allReservations = await ApiService.getReservations(selectedAcademicYear);
         const studentReservations = allReservations.filter(r => r.type === 'student');
         
         // Calculate total revenue from student reservations

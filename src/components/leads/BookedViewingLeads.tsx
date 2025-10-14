@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ApiService, Lead } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { StatCardsCarousel } from '@/components/leads/StatCardsCarousel';
 
@@ -34,11 +35,13 @@ const BookedViewingLeads = () => {
   const [bookingToDelete, setBookingToDelete] = useState<Lead | null>(null);
   const navigate = useNavigate();
 
+  const { selectedAcademicYear } = useAcademicYear();
+
   const fetchBookings = async () => {
     try {
       setLoading(true);
       // Fetch all leads and filter for viewing bookings
-      const allLeads = await ApiService.getLeads();
+      const allLeads = await ApiService.getLeads(selectedAcademicYear);
       // Filter leads that have "Viewing booking requested for:" in notes
       const viewingBookings = allLeads.filter(lead => 
         lead.notes && lead.notes.includes('Viewing booking requested for:')
@@ -53,7 +56,7 @@ const BookedViewingLeads = () => {
 
   useEffect(() => {
     fetchBookings();
-  }, []);
+  }, [selectedAcademicYear]);
 
   const handleDelete = async () => {
     if (!bookingToDelete) return;

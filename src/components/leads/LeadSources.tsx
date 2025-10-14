@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Globe, Phone, Mail, Users, ArrowLeft, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ApiService, Lead } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useToast } from '@/hooks/use-toast';
 
 interface LeadSource {
@@ -81,9 +82,11 @@ const LeadSources = () => {
     }
   };
 
+  const { selectedAcademicYear } = useAcademicYear();
+
   const fetchAllLeads = async () => {
     try {
-      const leadsData = await ApiService.getLeads();
+      const leadsData = await ApiService.getLeads(selectedAcademicYear);
       setAllLeads(leadsData || []);
     } catch (error) {
       console.error('Error fetching all leads:', error);

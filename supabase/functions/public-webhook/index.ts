@@ -13,6 +13,10 @@ serve(async (req) => {
   }
 
   try {
+    // Log request for debugging
+    console.log('Webhook called - Method:', req.method)
+    console.log('Headers:', Object.fromEntries(req.headers.entries()))
+    
     // Create Supabase client with service role key (bypasses RLS)
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -64,6 +68,20 @@ serve(async (req) => {
       )
     }
 
+    // Get the current academic year from the database
+    const { data: currentAcademicYear, error: yearError } = await supabaseClient
+      .from('academic_years')
+      .select('name')
+      .eq('is_current', true)
+      .single()
+
+    let academicYear = '2025/2026' // Fallback default
+    if (!yearError && currentAcademicYear) {
+      academicYear = currentAcademicYear.name
+    } else {
+      console.log('Could not fetch current academic year, using fallback:', academicYear)
+    }
+
     // Map Elementor form fields to ISKA RMS lead structure
     const leadData = {
       first_name: formData.first_name || '',
@@ -76,7 +94,8 @@ serve(async (req) => {
       room_grade_preference_id: formData.room_grade || undefined,
       duration_type_preference_id: formData.duration || undefined,
       budget: formData.budget ? parseFloat(formData.budget) : undefined,
-      estimated_revenue: formData.budget ? parseFloat(formData.budget) : undefined
+      estimated_revenue: formData.budget ? parseFloat(formData.budget) : undefined,
+      academic_year: academicYear // Use current academic year from database
       // Removed created_by field - let database use default or null
     }
 
@@ -109,6 +128,7 @@ serve(async (req) => {
     }
 
     console.log('Lead created successfully:', data)
+    console.log('Academic year used:', academicYear)
 
     return new Response(
       JSON.stringify({ 

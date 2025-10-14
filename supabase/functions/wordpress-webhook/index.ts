@@ -64,6 +64,20 @@ serve(async (req) => {
       )
     }
 
+    // Get the current academic year from the database
+    const { data: currentAcademicYear, error: yearError } = await supabaseClient
+      .from('academic_years')
+      .select('name')
+      .eq('is_current', true)
+      .single()
+
+    let academicYear = '2025/2026' // Fallback default
+    if (!yearError && currentAcademicYear) {
+      academicYear = currentAcademicYear.name
+    } else {
+      console.log('Could not fetch current academic year, using fallback:', academicYear)
+    }
+
     // Map Elementor form fields to ISKA RMS lead structure
     const leadData = {
       first_name: formData.first_name || '',
@@ -77,7 +91,8 @@ serve(async (req) => {
       duration_type_preference_id: formData.duration || undefined,
       budget: formData.budget ? parseFloat(formData.budget) : undefined,
       estimated_revenue: formData.budget ? parseFloat(formData.budget) : undefined,
-      created_by: 'system' // System-created lead
+      created_by: 'system', // System-created lead
+      academic_year: academicYear // Use current academic year from database
     }
 
     // Create the lead

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ApiService, StudentWithUser, Reservation, Invoice } from '@/services/api';
+import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useToast } from '@/hooks/use-toast';
 import { DollarSign, Clock, Building, Calendar, FileText, Eye, Loader2 } from 'lucide-react';
 
@@ -18,9 +19,11 @@ const StudentOverview = ({ studentId }: StudentOverviewProps) => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const { selectedAcademicYear } = useAcademicYear();
+
   useEffect(() => {
     fetchStudentData();
-  }, [studentId]);
+  }, [studentId, selectedAcademicYear]);
 
   const fetchStudentData = async () => {
     try {
@@ -32,7 +35,7 @@ const StudentOverview = ({ studentId }: StudentOverviewProps) => {
       
       // Get reservation data (may be null for direct bookings)
       try {
-        const reservationData = await ApiService.getReservationByStudentId(studentId);
+        const reservationData = await ApiService.getReservationByStudentId(studentId, selectedAcademicYear);
         setReservation(reservationData);
       } catch (error) {
         console.log('No reservation found for student (direct booking)');
@@ -41,7 +44,7 @@ const StudentOverview = ({ studentId }: StudentOverviewProps) => {
       
       // Get invoices data
       try {
-        const invoicesData = await ApiService.getInvoicesByStudentId(studentId);
+        const invoicesData = await ApiService.getInvoicesByStudentId(studentId, selectedAcademicYear);
         setInvoices(invoicesData);
       } catch (error) {
         console.log('No invoices found for student');
