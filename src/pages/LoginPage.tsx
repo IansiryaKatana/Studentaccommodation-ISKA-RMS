@@ -7,6 +7,7 @@ import { HeroSection } from '@/components/components/HeroSection';
 import { LoginDialog } from '@/components/components/LoginDialog';
 import { ModuleList } from '@/components/components/ModuleList';
 import { Loader2 } from 'lucide-react';
+import { LoginPageSkeleton } from '@/components/ui/skeleton-loader';
 
 export default function NewLoginPageIntegrated() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,6 +81,11 @@ export default function NewLoginPageIntegrated() {
       setIsLoading(false);
     }
   };
+
+  // Show skeleton loader while branding is loading
+  if (brandingLoading) {
+    return <LoginPageSkeleton />;
+  }
 
   return (
     <div className="new-login-theme min-h-screen bg-gradient-to-br from-background via-background to-muted/20">

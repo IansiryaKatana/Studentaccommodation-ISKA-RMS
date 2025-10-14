@@ -3,16 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ApiService } from '@/services/api';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import { useBranding } from '@/contexts/BrandingContext';
 import { DashboardHeader } from '@/components/components/DashboardHeader';
 import { WelcomeSection } from '@/components/components/WelcomeSection';
 import { DashboardModuleList } from '@/components/components/DashboardModuleList';
 import { LogoutConfirmationDialog } from '@/components/auth/LogoutConfirmationDialog';
 import StudentSelectionDialog from '@/components/dashboard/StudentSelectionDialog';
+import { DashboardPageSkeleton } from '@/components/ui/skeleton-loader';
 
 export default function NewDashboardPage() {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const { selectedAcademicYear } = useAcademicYear();
+  const { branding, isLoading: brandingLoading } = useBranding();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
@@ -83,6 +86,11 @@ export default function NewDashboardPage() {
     }
   };
 
+  // Show skeleton loader while branding is loading
+  if (brandingLoading) {
+    return <DashboardPageSkeleton />;
+  }
+
   return (
     <div className="new-dashboard-theme min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <DashboardHeader 
@@ -99,7 +107,7 @@ export default function NewDashboardPage() {
           
           <div className="w-[520px] flex-shrink-0">
             <DashboardModuleList 
-              searchQuery={searchQuery}
+              searchQuery={searchQuery} 
               onModuleClick={handleModuleClick}
               newMaintenanceRequestsCount={newMaintenanceRequestsCount}
             />
