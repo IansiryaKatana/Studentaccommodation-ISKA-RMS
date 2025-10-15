@@ -95,36 +95,14 @@ async function handler(req: Request): Promise<Response> {
       return new Response(JSON.stringify({ error: 'Student not found' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Get installment plan - try academic year specific first, fallback to universal
+    // Get installment plan
     let plan: any = null;
     if (installmentPlanId) {
-      // First try to get academic year specific plan
-      const { data: academicYearPlan, error: ayError } = await admin
-        .from('academic_year_installment_plans')
-        .select(`
-          *,
-          installment_plan:installment_plans(*)
-        `)
-        .eq('installment_plan_id', installmentPlanId)
-        .eq('academic_year', academicYear)
-        .eq('is_active', true)
-        .single();
-
-      if (academicYearPlan && !ayError) {
-        // Use academic year specific plan
-        plan = {
-          ...academicYearPlan.installment_plan,
-          due_dates: academicYearPlan.due_dates,
-          deposit_amount: academicYearPlan.deposit_amount
-        };
-      } else {
-        // Fallback to universal plan
-        const { data: p, error } = await admin.from('installment_plans').select('*').eq('id', installmentPlanId).single();
-        if (error) {
-          return new Response(JSON.stringify({ error: `Installment plan not found: ${error.message}` }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-        }
-        plan = p;
+      const { data: p, error } = await admin.from('installment_plans').select('*').eq('id', installmentPlanId).single();
+      if (error) {
+        return new Response(JSON.stringify({ error: `Installment plan not found: ${error.message}` }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
+      plan = p;
     }
 
     const invoices: any[] = [];

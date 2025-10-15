@@ -4542,7 +4542,7 @@ export class ApiService {
       .select('*')
       .eq('student_id', studentId)
       .order('created_at', { ascending: false });
-    
+
     const { data: studentInvoices, error: studentError } = await studentQuery;
     if (studentError) {
       console.error(`❌ API: Error fetching student invoices:`, studentError);
@@ -4594,7 +4594,7 @@ export class ApiService {
       `)
       .eq('reservation.student_id', studentId)
       .order('created_at', { ascending: false });
-    
+
     const { data: reservationInvoices, error: reservationError } = await reservationQuery;
     if (reservationError && reservationError.code !== 'PGRST116') {
       console.error(`❌ API: Error fetching reservation invoices:`, reservationError);
@@ -4627,7 +4627,7 @@ export class ApiService {
     const uniqueInvoices = allInvoices.filter((invoice, index, self) => 
       index === self.findIndex(i => i.id === invoice.id)
     );
-    
+
     console.log(`🔍 API: Returning ${uniqueInvoices.length} unique invoices for student ${studentId} (after smart filtering)`);
     return uniqueInvoices;
   }
