@@ -42,7 +42,7 @@ const ModuleStylesManagement = () => {
     { name: 'leads', displayName: 'Leads' },
     { name: 'students', displayName: 'Students' },
     { name: 'ota-bookings', displayName: 'OTA Bookings' },
-    { name: 'cleaning', displayName: 'Cleaning' },
+    { name: 'reports', displayName: 'Reports & Forecasting' },
     { name: 'data', displayName: 'Data Management' },
     { name: 'finance', displayName: 'Finance' },
     { name: 'settings', displayName: 'Settings' },

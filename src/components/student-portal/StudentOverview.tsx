@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ApiService, StudentWithUser, Reservation, Invoice } from '@/services/api';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
+import PaymentEventService, { InvoiceCreationEvent } from '@/services/paymentEventService';
 import { useToast } from '@/hooks/use-toast';
 import { DollarSign, Clock, Building, Calendar, FileText, Eye, Loader2 } from 'lucide-react';
 
@@ -23,6 +24,41 @@ const StudentOverview = ({ studentId }: StudentOverviewProps) => {
 
   useEffect(() => {
     fetchStudentData();
+    
+    // Listen for invoice creation events to refresh data
+    const handleInvoiceCreationEvent = (event: InvoiceCreationEvent) => {
+      console.log('📋 Invoice creation event received in Student Overview, refreshing data...', event);
+      // Only refresh if this is for the current student and academic year matches
+      if (event.student_id === studentId && event.academic_year === selectedAcademicYear) {
+        console.log('🔄 Refreshing Student Overview data due to invoice creation event');
+        fetchStudentData();
+      }
+    };
+    
+    PaymentEventService.getInstance().registerInvoiceCreationListener(`student-overview-${studentId}`, handleInvoiceCreationEvent);
+    
+    // Also check if there are recent invoices that might not have been loaded yet
+    // This handles the case where the component mounts after invoices were created
+    const checkForRecentInvoices = async () => {
+      try {
+        console.log('🔍 Checking for recent invoices in Student Overview...');
+        const recentInvoices = await ApiService.getInvoicesByStudentId(studentId, selectedAcademicYear);
+        if (recentInvoices.length > 0) {
+          console.log('📋 Found recent invoices in Student Overview, refreshing data:', recentInvoices.length);
+          fetchStudentData();
+        }
+      } catch (error) {
+        console.log('No recent invoices found in Student Overview or error checking:', error);
+      }
+    };
+    
+    // Check for recent invoices after a short delay to allow for any pending operations
+    const timeoutId = setTimeout(checkForRecentInvoices, 1000);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      PaymentEventService.getInstance().unregisterInvoiceCreationListener(`student-overview-${studentId}`);
+    };
   }, [studentId, selectedAcademicYear]);
 
   const fetchStudentData = async () => {

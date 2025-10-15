@@ -15,9 +15,10 @@ const StudiosOverview = () => {
     totalStudios: 0,
     availableStudios: 0,
     occupiedStudios: 0,
-    maintenanceStudios: 0,
-    cleaningStudios: 0,
-    dirtyStudios: 0,
+    occupiedBreakdown: {
+      otaBookings: 0,
+      studentBookings: 0
+    },
     totalRevenue: 0
   });
   const [recentReservations, setRecentReservations] = useState([]);
@@ -95,6 +96,14 @@ const StudiosOverview = () => {
         s.current_reservation !== null || (s.assigned_students && s.assigned_students.length > 0)
       ).length;
       
+      // Count OTA bookings (studios with current reservations)
+      const otaBookings = studios.filter(s => s.current_reservation !== null).length;
+      
+      // Count student bookings (studios with assigned students)
+      const studentBookings = studios.filter(s => 
+        s.assigned_students && s.assigned_students.length > 0
+      ).length;
+      
       // Count available studios (vacant status and no current reservation and no students)
       const availableStudios = studios.filter(s => 
         s.status === 'vacant' && !s.current_reservation && (!s.assigned_students || s.assigned_students.length === 0)
@@ -104,16 +113,11 @@ const StudiosOverview = () => {
       console.log('🏢 StudiosOverview stats calculation:', {
         totalStudios,
         actuallyOccupied,
+        otaBookings,
+        studentBookings,
         availableStudios,
-        studiosWithReservations: studios.filter(s => s.current_reservation !== null).length,
-        vacantStudios: studios.filter(s => s.status === 'vacant').length,
         academicYear: selectedAcademicYear
       });
-      
-      // Count by status for other stats (these are studio-level, not academic year specific)
-      const maintenanceStudios = studios.filter(s => s.status === 'maintenance').length;
-      const cleaningStudios = studios.filter(s => s.status === 'cleaning').length;
-      const dirtyStudios = studios.filter(s => s.status === 'dirty').length;
       
       // Calculate total revenue from occupancy stats (more accurate)
       const totalRevenue = studios.reduce((sum, studio) => {
@@ -123,10 +127,11 @@ const StudiosOverview = () => {
       setStats({
         totalStudios,
         availableStudios,
-        occupiedStudios: actuallyOccupied, // Use actual reservations count
-        maintenanceStudios,
-        cleaningStudios,
-        dirtyStudios,
+        occupiedStudios: actuallyOccupied,
+        occupiedBreakdown: {
+          otaBookings,
+          studentBookings
+        },
         totalRevenue
       });
 
@@ -164,26 +169,9 @@ const StudiosOverview = () => {
     {
       title: 'Occupied',
       value: stats.occupiedStudios,
+      subtitle: `${stats.occupiedBreakdown.otaBookings} OTA • ${stats.occupiedBreakdown.studentBookings} Student`,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50'
-    },
-    {
-      title: 'Maintenance',
-      value: stats.maintenanceStudios,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50'
-    },
-    {
-      title: 'Cleaning',
-      value: stats.cleaningStudios,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50'
-    },
-    {
-      title: 'Dirty',
-      value: stats.dirtyStudios,
-      color: 'text-red-600',
-      bgColor: 'bg-red-50'
     },
     {
       title: 'Total Revenue',
@@ -221,10 +209,10 @@ const StudiosOverview = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {isLoading ? (
           <>
-            {Array.from({ length: 7 }).map((_, index) => (
+            {Array.from({ length: 4 }).map((_, index) => (
               <StatsCardSkeleton key={index} />
             ))}
           </>
@@ -237,6 +225,11 @@ const StudiosOverview = () => {
                 <p className={`text-2xl font-bold ${stat.color} break-words`}>
                   {isLoading ? '...' : stat.value}
                 </p>
+                {stat.subtitle && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    {stat.subtitle}
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>

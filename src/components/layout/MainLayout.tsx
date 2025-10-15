@@ -25,6 +25,7 @@ import {
   Users,
   Calendar,
   UserCheck,
+  BarChart3,
   Sparkles,
   ExternalLink,
   DollarSign,
@@ -54,7 +55,6 @@ import {
   Mail,
   MessageSquare,
   Receipt,
-  BarChart3,
   Send,
   TrendingUp,
   Bell
@@ -164,16 +164,17 @@ const moduleRoutes: Record<string, ModuleRoute> = {
     pages: [
       { title: 'Overview', path: '/studios', icon: Building },
       { title: 'Studios List', path: '/studios/list', icon: Building },
-      { title: 'Add Studio', path: '/studios/add', icon: Plus }
+      { title: 'Add Studio', path: '/studios/add', icon: Plus },
+      { title: 'Cleaning', path: '/studios/cleaning', icon: Sparkles }
     ]
   },
-  cleaning: {
-    icon: Sparkles,
-    title: 'Cleaning',
-    basePath: '/cleaning',
-    gradient: 'cleaning',
+  reports: {
+    icon: BarChart3,
+    title: 'Reports & Forecasting',
+    basePath: '/reports',
+    gradient: 'reports',
     pages: [
-      { title: 'Overview', path: '/cleaning', icon: Sparkles }
+      { title: 'Overview', path: '/reports', icon: BarChart3 }
     ]
   },
   finance: {

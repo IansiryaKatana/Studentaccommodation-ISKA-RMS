@@ -4,7 +4,7 @@ import { Routes, Route } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import CleaningOverview from '@/components/cleaning/CleaningOverview';
+import CleaningOverview from '@/components/studios/cleaning/CleaningOverview';
 
 const CleaningModule = () => {
   const navigate = useNavigate();

@@ -11,7 +11,7 @@ import LeadsModule from '@/pages/LeadsModule';
 import ReservationsModule from '@/pages/ReservationsModule';
 import StudentsModule from '@/pages/StudentsModule';
 import StudiosModule from '@/pages/StudiosModule';
-import CleaningModule from '@/pages/CleaningModule';
+import ReportsModule from '@/pages/ReportsModule';
 import FinanceModule from '@/pages/FinanceModule';
 import DataModule from '@/pages/DataModule';
 import SettingsModule from '@/pages/SettingsModule';
@@ -114,10 +114,10 @@ function App() {
                   </ProtectedRoute>
                 } />
                 
-                <Route path="/cleaning/*" element={
-                  <ProtectedRoute requiredModule="cleaning">
+                <Route path="/reports/*" element={
+                  <ProtectedRoute requiredModule="reports">
                     <MainLayout>
-                      <CleaningModule />
+                      <ReportsModule />
                     </MainLayout>
                   </ProtectedRoute>
                 } />

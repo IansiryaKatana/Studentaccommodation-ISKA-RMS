@@ -11,6 +11,7 @@ type Input = {
   durationId?: string;
   createdBy?: string;
   depositPaid?: boolean;
+  academicYear?: string;
 };
 
 type Json = Record<string, unknown> | Array<unknown> | string | number | boolean | null;
@@ -69,7 +70,7 @@ async function handler(req: Request): Promise<Response> {
   }
 
   try {
-    const { studentId, totalAmount, depositAmount, installmentPlanId, createdBy, depositPaid }: Input = await req.json();
+    const { studentId, totalAmount, depositAmount, installmentPlanId, createdBy, depositPaid, academicYear }: Input = await req.json();
     if (!studentId || !totalAmount || depositAmount == null) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -121,6 +122,7 @@ async function handler(req: Request): Promise<Response> {
       due_date: createdAt.split('T')[0],
       status: depositPaid ? 'completed' : 'pending',
       created_by: createdById,
+      academic_year: academicYear,
     });
     invoices.push(depInv);
     nextSeq += 1;
@@ -182,6 +184,7 @@ async function handler(req: Request): Promise<Response> {
           due_date: due,
           status: 'pending',
           created_by: createdById,
+          academic_year: academicYear,
         });
       }
 
@@ -211,6 +214,7 @@ async function handler(req: Request): Promise<Response> {
         due_date: createdAt.split('T')[0],
         status: 'pending',
         created_by: createdById,
+        academic_year: academicYear,
       });
       invoices.push(mainInv);
       nextSeq += 1;

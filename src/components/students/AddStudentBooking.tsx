@@ -90,7 +90,7 @@ const AddStudentBooking = () => {
     town: '',
     
     // Academic Information
-    academicYear: '2025/2026',
+    academicYear: selectedAcademicYear || '2025/2026',
     yearOfStudy: '',
     fieldOfStudy: '',
     
@@ -175,6 +175,16 @@ const AddStudentBooking = () => {
 
     fetchFormData();
   }, [toast]);
+
+  // Update form academic year when context changes
+  useEffect(() => {
+    if (selectedAcademicYear) {
+      setFormData(prev => ({
+        ...prev,
+        academicYear: selectedAcademicYear
+      }));
+    }
+  }, [selectedAcademicYear]);
 
   // Initialize birthday dropdowns from existing value (if any)
   useEffect(() => {
@@ -690,17 +700,47 @@ const AddStudentBooking = () => {
           });
           
           // Use the proper method to create student financial records
-          await ApiService.createStudentFinancialRecordsDirect(student.id, {
+          console.log('🎯 Creating financial records for student:', student.id, 'with academic year:', formData.academicYear);
+          const financialRecords = await ApiService.createStudentFinancialRecordsDirect(student.id, {
             depositAmount: depositAmount,
             totalAmount: totalAmount,
             installmentPlanId: formData.wantsInstallments ? formData.installmentPlanId : undefined,
             durationId: formData.durationType || 'student', // Provide default if undefined
             createdBy: '423b2f89-ed35-4537-866e-d4fe702e577c', // Admin user ID
             depositPaid: formData.depositPaid,
-            reservationId: reservation?.id // Pass reservation ID if created
+            reservationId: reservation?.id, // Pass reservation ID if created
+            academicYear: formData.academicYear // Pass the academic year from form
           });
           
-          console.log('Financial records created successfully');
+          console.log('✅ Financial records created successfully:', financialRecords);
+          
+          // Dispatch event to notify Finance module and Student Portal of new invoices
+          const invoiceIds = [
+            financialRecords.depositInvoice?.id,
+            financialRecords.mainInvoice?.id,
+            ...(financialRecords.installmentInvoices || []).map(inv => inv.id)
+          ].filter(Boolean);
+          
+          console.log('🔍 Invoice IDs to dispatch:', invoiceIds);
+          console.log('🔍 Financial records structure:', {
+            depositInvoice: financialRecords.depositInvoice,
+            mainInvoice: financialRecords.mainInvoice,
+            installmentInvoices: financialRecords.installmentInvoices
+          });
+          
+          if (invoiceIds.length > 0) {
+            const eventDetail = {
+              student_id: student.id,
+              invoice_ids: invoiceIds,
+              academic_year: formData.academicYear,
+              timestamp: new Date().toISOString()
+            };
+            console.log('📡 Dispatching invoicesCreated event with detail:', eventDetail);
+            window.dispatchEvent(new CustomEvent('invoicesCreated', { detail: eventDetail }));
+            console.log('📡 Dispatched invoicesCreated event for', invoiceIds.length, 'invoices');
+          } else {
+            console.warn('⚠️ No invoice IDs found to dispatch event');
+          }
         } catch (error) {
           console.error('Error creating financial records:', error);
           // Don't fail the entire process if financial records creation fails

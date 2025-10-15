@@ -14,7 +14,7 @@ import { AcademicYearSelector } from '@/components/ui/AcademicYearSelector';
 import { 
   Users, 
   Calendar, 
-  Sparkles, 
+  BarChart3, 
   DollarSign, 
   Database, 
   Settings,
@@ -90,7 +90,7 @@ const Dashboard = () => {
   }, [selectedAcademicYear]);
 
   const modules = [
-    // Row 1: Leads, Students, OTA Bookings, Cleaning
+    // Row 1: Leads, Students, OTA Bookings, Reports & Forecasting
     {
       title: 'Leads',
       description: 'Manage customer leads and prospects',
@@ -116,11 +116,11 @@ const Dashboard = () => {
       accessGranted: true
     },
     {
-      title: 'Cleaning',
-      description: 'Schedule and track cleaning tasks',
-      icon: Sparkles,
-      path: '/cleaning',
-      moduleName: 'cleaning',
+      title: 'Reports & Forecasting',
+      description: 'Analytics, insights, and predictive reporting',
+      icon: BarChart3,
+      path: '/reports',
+      moduleName: 'reports',
       accessGranted: true
     },
     // Row 2: Data Management, Finance, Settings, Student Portal

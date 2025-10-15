@@ -26,7 +26,7 @@ import { ApiService, Invoice, Student } from '@/services/api';
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import PaymentEventService from '@/services/paymentEventService';
+import PaymentEventService, { InvoiceCreationEvent } from '@/services/paymentEventService';
 
 interface StudentInvoice {
   id: string;
@@ -74,29 +74,72 @@ const StudentInvoices = () => {
       console.log('💰 Payment event received in Finance module, refreshing student invoices...');
       fetchStudentInvoices();
     };
+
+    // Listen for invoice creation events to refresh data
+    const handleInvoiceCreationEvent = (event: InvoiceCreationEvent) => {
+      console.log('📋 Invoice creation event received in Finance module, refreshing student invoices...', event);
+      // Only refresh if the academic year matches
+      if (event.academic_year === selectedAcademicYear) {
+        fetchStudentInvoices();
+      }
+    };
     
     PaymentEventService.getInstance().registerListener('finance-student-invoices', handlePaymentEvent);
+    PaymentEventService.getInstance().registerInvoiceCreationListener('finance-student-invoices', handleInvoiceCreationEvent);
+    
+    // Also check for recent invoices that might not have been loaded yet
+    // This handles the case where the component mounts after invoices were created
+    const checkForRecentInvoices = async () => {
+      try {
+        console.log('🔍 Finance module: Checking for recent invoices that might not have been loaded...');
+        // Re-fetch to ensure we have the latest data
+        await fetchStudentInvoices();
+      } catch (error) {
+        console.log('Finance module: Error checking for recent invoices:', error);
+      }
+    };
+    
+    // Check for recent invoices after a short delay to allow for any pending operations
+    const timeoutId = setTimeout(checkForRecentInvoices, 1000);
     
     return () => {
+      clearTimeout(timeoutId);
       PaymentEventService.getInstance().unregisterListener('finance-student-invoices');
+      PaymentEventService.getInstance().unregisterInvoiceCreationListener('finance-student-invoices');
     };
   }, [selectedAcademicYear]);
 
   const fetchStudentInvoices = async () => {
     try {
       setLoading(true);
-      const students = await ApiService.getStudents(selectedAcademicYear);
+      console.log('🔍 Finance module: Fetching students for academic year:', selectedAcademicYear);
+      
+      // SMART APPROACH: Get all students first, then filter invoices intelligently
+      let students;
+      if (selectedAcademicYear === 'all') {
+        // If "all" is selected, get all students regardless of their academic year
+        students = await ApiService.getStudents('all');
+        console.log('🔍 Finance module: Found all students:', students.length);
+      } else {
+        // Get students for the specific academic year
+        students = await ApiService.getStudents(selectedAcademicYear);
+        console.log('🔍 Finance module: Found students for', selectedAcademicYear, ':', students.length);
+      }
       
       // Create student invoices using ACTUAL invoice data from invoices table
       const invoices: StudentInvoice[] = await Promise.all(
         students.map(async (student) => {
           try {
+            console.log(`🔍 Finance module: Checking invoices for student ${student.id} (${student.first_name} ${student.last_name}) - Student academic year: ${student.academic_year}`);
+            
             // Get ACTUAL invoices for this student from the invoices table
+            // Use smart filtering that handles academic year mismatches
             let actualInvoices: any[] = [];
             try {
               actualInvoices = await ApiService.getInvoicesByStudentId(student.id, selectedAcademicYear);
+              console.log(`🔍 Finance module: Found ${actualInvoices.length} invoices for student ${student.id}`);
             } catch (error) {
-              console.log(`No invoices found for student ${student.id}`);
+              console.log(`❌ Finance module: No invoices found for student ${student.id}:`, error);
             }
             
             // Convert actual invoices to mini invoices format for display
@@ -118,6 +161,17 @@ const StudentInvoices = () => {
             
             const progressPercentage = totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0;
             
+            // SMART FILTERING: Only include students who have invoices OR are in the current academic year
+            // This prevents showing students with no invoices from other academic years
+            const shouldIncludeStudent = actualInvoices.length > 0 || 
+              (selectedAcademicYear !== 'all' && student.academic_year === selectedAcademicYear) ||
+              selectedAcademicYear === 'all';
+            
+            if (!shouldIncludeStudent) {
+              console.log(`🔍 Finance module: Excluding student ${student.id} - no invoices and academic year mismatch`);
+              return null;
+            }
+            
             return {
               id: student.id,
               student,
@@ -130,22 +184,14 @@ const StudentInvoices = () => {
             };
           } catch (studentError) {
             console.error(`Error processing student ${student.id}:`, studentError);
-            // Return empty structure if no invoices found
-            return {
-              id: student.id,
-              student,
-              total_amount: 0,
-              deposit_amount: 0,
-              installment_plan_id: student.installment_plan_id,
-              mini_invoices: [],
-              progress_percentage: 0,
-              created_at: student.created_at
-            };
+            return null; // Return null for failed processing
           }
         })
       );
       
-      setStudentInvoices(invoices);
+      // Filter out null values and students with no invoices (unless they're in the current academic year)
+      const validInvoices = invoices.filter(inv => inv !== null && (inv.mini_invoices.length > 0 || selectedAcademicYear === 'all'));
+      setStudentInvoices(validInvoices);
     } catch (error) {
       console.error('Error fetching student invoices:', error);
       toast({

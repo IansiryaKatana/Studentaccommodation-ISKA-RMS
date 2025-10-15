@@ -3,7 +3,7 @@ import {
   Users, 
   GraduationCap, 
   Plane, 
-  Sparkles, 
+  BarChart3, 
   Database, 
   DollarSign, 
   Settings, 
@@ -31,9 +31,9 @@ const modules = [
     description: "Handle online travel agency bookings"
   },
   {
-    icon: Sparkles,
-    title: "Cleaning",
-    description: "Schedule and track cleaning tasks"
+    icon: BarChart3,
+    title: "Reports & Forecasting",
+    description: "Analytics, insights, and predictive reporting"
   },
   {
     icon: Database,

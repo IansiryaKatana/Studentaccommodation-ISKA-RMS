@@ -3,7 +3,7 @@ import {
   Users, 
   GraduationCap, 
   Plane, 
-  Sparkles, 
+  BarChart3, 
   Database, 
   DollarSign, 
   Settings, 
@@ -58,11 +58,11 @@ export const DashboardModuleList = ({
       path: "/ota-bookings"
     },
     {
-      icon: Sparkles,
-      title: "Cleaning",
-      description: "Schedule and track cleaning tasks",
-      moduleName: "cleaning",
-      path: "/cleaning"
+      icon: BarChart3,
+      title: "Reports & Forecasting",
+      description: "Analytics, insights, and predictive reporting",
+      moduleName: "reports",
+      path: "/reports"
     },
     {
       icon: Database,
