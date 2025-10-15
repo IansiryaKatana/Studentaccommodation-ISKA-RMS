@@ -268,7 +268,8 @@ const moduleRoutes: Record<string, ModuleRoute> = {
       { title: 'Configuration', path: '/settings/config', icon: Database },
       { title: 'Module Access Config', path: '/settings/module-access', icon: Shield, hasSubmenu: false },
       { title: 'Bulk Upload Students', path: '/settings/bulk-upload-students', icon: Upload },
-      { title: 'Leads Settings', path: '/settings/leads', icon: Users }
+      { title: 'Leads Settings', path: '/settings/leads', icon: Users },
+      { title: 'Academic Year Setup', path: '/settings/academic-year-setup', icon: Calendar }
     ]
   },
   'student-portal': {

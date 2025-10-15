@@ -13,6 +13,7 @@ import ModuleAccessConfig from '@/components/settings/ModuleAccessConfig';
 import BulkUploadStudents from '@/components/settings/BulkUploadStudents';
 import LeadsSettings from '@/components/settings/LeadsSettings';
 import WebhookManagement from '@/components/settings/WebhookManagement';
+import AcademicYearSetupWizard from '@/components/settings/AcademicYearSetupWizard';
 
 const SettingsModule = () => {
   return (
@@ -29,6 +30,7 @@ const SettingsModule = () => {
       <Route path="/bulk-upload-students" element={<BulkUploadStudents />} />
       <Route path="/leads" element={<LeadsSettings />} />
       <Route path="/webhooks" element={<WebhookManagement />} />
+      <Route path="/academic-year-setup" element={<AcademicYearSetupWizard isOpen={true} onClose={() => window.history.back()} onSuccess={() => window.history.back()} />} />
     </Routes>
   );
 };

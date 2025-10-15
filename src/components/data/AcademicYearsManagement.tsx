@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Switch } from '@/components/ui/switch';
 import { ApiService, AcademicYear } from '@/services/api';
 import { useToast } from '@/hooks/use-toast';
+import AcademicYearSetupWizard from '@/components/settings/AcademicYearSetupWizard';
 import { 
   Calendar, 
   Plus, 
@@ -29,6 +30,7 @@ const AcademicYearsManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [editingYear, setEditingYear] = useState<AcademicYear | null>(null);
   const [newAcademicYear, setNewAcademicYear] = useState({
     name: '',
@@ -178,7 +180,7 @@ const AcademicYearsManagement = () => {
 
   const openEditDialog = (academicYear: AcademicYear) => {
     setEditingYear({ ...academicYear });
-    setIsEditDialogOpen(true);
+    setIsWizardOpen(true);
   };
 
   const formatDate = (dateString: string) => {
@@ -480,6 +482,21 @@ const AcademicYearsManagement = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Academic Year Setup Wizard for Editing */}
+      <AcademicYearSetupWizard
+        isOpen={isWizardOpen}
+        onClose={() => {
+          setIsWizardOpen(false);
+          setEditingYear(null);
+        }}
+        onSuccess={() => {
+          setIsWizardOpen(false);
+          setEditingYear(null);
+          fetchAcademicYears();
+        }}
+        editingAcademicYear={editingYear}
+      />
     </div>
   );
 };

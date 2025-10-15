@@ -146,7 +146,6 @@ interface StudentRebookingProps {
 }
 
 interface RebookingFormData {
-  studioId: string;
   durationId: string;
   installmentPlanId?: string;
   depositAmount: number;
@@ -160,14 +159,13 @@ const StudentRebooking: React.FC<StudentRebookingProps> = ({ studentId }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [student, setStudent] = useState<Student | null>(null);
-  const [studios, setStudios] = useState<Studio[]>([]);
+  const [currentStudio, setCurrentStudio] = useState<Studio | null>(null);
   const [durations, setDurations] = useState<Duration[]>([]);
   const [installmentPlans, setInstallmentPlans] = useState<InstallmentPlan[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRebooking, setIsRebooking] = useState(false);
   const [showRebookingDialog, setShowRebookingDialog] = useState(false);
   const [rebookingData, setRebookingData] = useState<RebookingFormData>({
-    studioId: '',
     durationId: '',
     installmentPlanId: '',
     depositAmount: 99
@@ -176,19 +174,34 @@ const StudentRebooking: React.FC<StudentRebookingProps> = ({ studentId }) => {
   // Get next academic year
   const getNextAcademicYear = (): string => {
     if (!selectedAcademicYear || selectedAcademicYear === 'all') {
+      console.log('🔍 No selected academic year, using default fallback: 2026/2027');
       return '2026/2027'; // Default fallback
     }
     
-    const currentIndex = availableAcademicYears.indexOf(selectedAcademicYear);
-    if (currentIndex < availableAcademicYears.length - 1) {
-      return availableAcademicYears[currentIndex + 1];
+    // Calculate the next academic year based on the current year
+    const currentStartYear = parseInt(selectedAcademicYear.split('/')[0]); // Get "2025" from "2025/2026"
+    const nextStartYear = currentStartYear + 1;
+    const nextEndYear = nextStartYear + 1;
+    const calculatedYear = `${nextStartYear}/${nextEndYear}`;
+    
+    console.log('🔍 Academic year calculation:', {
+      selectedAcademicYear,
+      currentStartYear,
+      nextStartYear,
+      nextEndYear,
+      calculatedYear,
+      availableAcademicYears
+    });
+    
+    // Check if the calculated year exists in available years
+    if (availableAcademicYears.includes(calculatedYear)) {
+      console.log('✅ Found calculated year in available years:', calculatedYear);
+      return calculatedYear;
     }
     
-    // If no next year exists, create one based on current year
-    const currentYear = selectedAcademicYear.split('/')[1]; // Get the end year (e.g., "2026" from "2025/2026")
-    const nextYear = parseInt(currentYear) + 1;
-    const yearAfter = nextYear + 1;
-    return `${nextYear}/${yearAfter}`;
+    // If not found, return the calculated year anyway (it might not be set up yet)
+    console.log('⚠️ Calculated year not in available years, using anyway:', calculatedYear);
+    return calculatedYear;
   };
 
   const nextAcademicYear = getNextAcademicYear();
@@ -205,12 +218,34 @@ const StudentRebooking: React.FC<StudentRebookingProps> = ({ studentId }) => {
       const studentData = await ApiService.getStudentById(studentId);
       setStudent(studentData);
 
-      // Load available studios for next academic year
-      const studiosData = await ApiService.getStudios();
-      setStudios(studiosData);
+      // Load current student booking to get the current studio
+      if (selectedAcademicYear && selectedAcademicYear !== 'all') {
+        try {
+          console.log('🔍 Loading current booking for student:', studentId, 'academic year:', selectedAcademicYear);
+          console.log('🔍 Student data:', studentData);
+          
+          // Try to get current booking using student ID directly (fallback for students without user_id)
+          const currentBooking = await ApiService.getStudentBookingByStudentId(studentId, selectedAcademicYear);
+          console.log('🔍 Current booking result:', currentBooking);
+        
+          if (currentBooking && currentBooking.studio) {
+            setCurrentStudio(currentBooking.studio);
+            console.log('✅ Found current studio for rebooking:', currentBooking.studio.studio_number, 'ID:', currentBooking.studio.id);
+          } else {
+            console.log('⚠️ No current booking found for academic year:', selectedAcademicYear);
+            setCurrentStudio(null);
+          }
+        } catch (error) {
+          console.log('⚠️ Error loading current booking:', error);
+          setCurrentStudio(null);
+        }
+      } else {
+        setCurrentStudio(null);
+      }
 
       // Load durations (filter to only active student durations)
       const allDurations = await ApiService.getDurations('student');
+      
       // Filter to only active durations and remove duplicates by name
       const uniqueDurations = allDurations
         .filter(d => d.is_active)
@@ -223,16 +258,25 @@ const StudentRebooking: React.FC<StudentRebookingProps> = ({ studentId }) => {
         }, [] as Duration[]);
       setDurations(uniqueDurations);
 
-      // Load installment plans
-      const plansData = await ApiService.getInstallmentPlans();
-      setInstallmentPlans(plansData);
-
-      // Pre-select current studio if available
-      if (studentData?.studio_id) {
-        setRebookingData(prev => ({
-          ...prev,
-          studioId: studentData.studio_id
-        }));
+      // Load installment plans for the next academic year
+      try {
+        const academicYearPlans = await ApiService.getAcademicYearInstallmentPlans(nextAcademicYear);
+        if (academicYearPlans && academicYearPlans.length > 0) {
+          // Use academic year specific plans
+          const plans = academicYearPlans.map(ayp => ayp.installment_plan).filter(Boolean);
+          setInstallmentPlans(plans);
+          console.log('✅ Loaded academic year specific installment plans');
+        } else {
+          // Fallback to universal plans
+          const plansData = await ApiService.getInstallmentPlans();
+          setInstallmentPlans(plansData);
+          console.log('⚠️ No academic year specific plans found, using universal plans');
+        }
+      } catch (error) {
+        // Error loading academic year plans, using universal plans
+        const plansData = await ApiService.getInstallmentPlans();
+        setInstallmentPlans(plansData);
+        console.log('⚠️ Error loading academic year plans, using universal plans');
       }
 
     } catch (error) {
@@ -248,19 +292,21 @@ const StudentRebooking: React.FC<StudentRebookingProps> = ({ studentId }) => {
   };
 
   const canRebook = (): boolean => {
+    // Check if student has a booking for the current academic year and a current studio
+    const hasCurrentBooking = student && selectedAcademicYear && selectedAcademicYear !== 'all';
+    const hasCurrentStudio = currentStudio !== null;
     return !!(
-      student?.studio_id && 
-      student?.academic_year === selectedAcademicYear &&
-      selectedAcademicYear !== 'all' &&
+      hasCurrentBooking && 
+      hasCurrentStudio &&
       nextAcademicYear
     );
   };
 
   const handleRebookingSubmit = async () => {
-    if (!student || !rebookingData.studioId || !rebookingData.durationId) {
+    if (!student || !currentStudio || !rebookingData.durationId) {
       toast({
         title: "Validation Error",
-        description: "Please select a studio and duration.",
+        description: "Please select a duration. Studio will be automatically selected.",
         variant: "destructive",
       });
       return;
@@ -327,107 +373,178 @@ const StudentRebooking: React.FC<StudentRebookingProps> = ({ studentId }) => {
       const paymentIntentId = await processStripePayment(rebookingData.depositAmount);
 
       // Create rebooking record
-      const rebookingRecord = await ApiService.createRebookingRecord({
+      const rebookingDataPayload = {
         original_student_id: studentId,
         current_academic_year: selectedAcademicYear,
         new_academic_year: nextAcademicYear,
-        studio_id: rebookingData.studioId,
+        studio_id: currentStudio?.id, // Use current studio instead of selected studio
         duration_id: rebookingData.durationId,
-        installment_plan_id: rebookingData.installmentPlanId,
+        installment_plan_id: rebookingData.installmentPlanId || undefined,
         deposit_amount: rebookingData.depositAmount,
         deposit_paid: true,
         stripe_payment_intent_id: paymentIntentId,
         status: 'confirmed'
-      });
-
-      // Create new student record for next academic year
-      const selectedDuration = durations.find(d => d.id === rebookingData.durationId);
-      const newStudentData = {
-        user_id: student?.user_id,
-        studio_id: rebookingData.studioId,
-        academic_year: nextAcademicYear,
-        // Calculate dates dynamically for the next academic year
-        check_in_date: calculateCheckInDate(nextAcademicYear),
-        check_out_date: calculateCheckOutDate(nextAcademicYear),
-        duration_id: rebookingData.durationId,
-        duration_name: selectedDuration?.name || '',
-        duration_type: 'student' as const,
-        weekly_rate: student?.weekly_rate || 0,
-        total_amount: student?.total_amount || 0,
-        deposit_paid: true,
-        status: 'confirmed' as const,
-        wants_installments: !!rebookingData.installmentPlanId,
-        installment_plan_id: rebookingData.installmentPlanId,
-        created_by: '423b2f89-ed35-4537-866e-d4fe702e577c' // Admin user ID
       };
+      
+      // Creating rebooking record
+      
+      const rebookingRecord = await ApiService.createRebookingRecord(rebookingDataPayload);
 
-      const newStudent = await ApiService.createStudent(newStudentData);
+      // Check if student already has a booking for the next academic year
+      console.log('🔍 Checking for existing booking for student:', student?.id, 'in academic year:', nextAcademicYear);
+      
+      let newBooking;
+      try {
+        const existingBooking = await ApiService.getCurrentStudentBooking(student?.id || '', nextAcademicYear);
+        if (existingBooking) {
+          console.log('⚠️ Student already has a booking for', nextAcademicYear, ':', existingBooking.id);
+          // Update the existing booking instead of creating a new one
+          newBooking = await ApiService.updateStudentBooking(existingBooking.id, {
+            studio_id: currentStudio?.id, // Use current studio instead of selected studio
+            duration_id: rebookingData.durationId,
+            check_in_date: calculateCheckInDate(nextAcademicYear),
+            check_out_date: calculateCheckOutDate(nextAcademicYear),
+            weekly_rate: student?.weekly_rate || 0,
+            total_amount: student?.total_amount || 0,
+            status: 'confirmed',
+            deposit_paid: true,
+            wants_installments: !!rebookingData.installmentPlanId,
+            installment_plan_id: rebookingData.installmentPlanId
+          });
+          
+          console.log('✅ Updated existing booking:', newBooking.id);
+        } else {
+          console.log('✅ No existing booking found, creating new one for', nextAcademicYear);
+          
+          // Create new student booking for next academic year (NO student duplication!)
+          const selectedDuration = durations.find(d => d.id === rebookingData.durationId);
+          const newBookingData = {
+            student_id: student?.id, // Same student record - no duplication!
+            academic_year: nextAcademicYear,
+            studio_id: currentStudio?.id, // Use current studio instead of selected studio
+            duration_id: rebookingData.durationId,
+            // Calculate dates dynamically for the next academic year
+            check_in_date: calculateCheckInDate(nextAcademicYear),
+            check_out_date: calculateCheckOutDate(nextAcademicYear),
+            weekly_rate: student?.weekly_rate || 0,
+            total_amount: student?.total_amount || 0,
+            status: 'confirmed' as const,
+            deposit_paid: true,
+            wants_installments: !!rebookingData.installmentPlanId,
+            installment_plan_id: rebookingData.installmentPlanId
+          };
 
-      // Update rebooking record with new student ID
-      await ApiService.updateRebookingRecord(rebookingRecord.id, {
-        new_student_id: newStudent.id
-      });
+          newBooking = await ApiService.createStudentBooking(newBookingData);
+          console.log('✅ Created new booking:', newBooking.id);
+        }
+        
+        // Update rebooking record with booking ID
+        await ApiService.updateRebookingRecord(rebookingRecord.id, {
+          student_booking_id: newBooking.id // Store booking ID in the correct field
+        });
+        
+      } catch (error) {
+        console.error('💥 Error checking/creating student booking:', error);
+        throw error;
+      }
 
-      // Create studio occupancy for next academic year
-      await ApiService.createStudioOccupancy({
-        studio_id: rebookingData.studioId,
-        academic_year: nextAcademicYear,
-        student_id: newStudent.id,
-        status: 'occupied',
-        check_in_date: calculateCheckInDate(nextAcademicYear),
-        check_out_date: calculateCheckOutDate(nextAcademicYear)
-      });
+      // Check and create/update studio occupancy for next academic year
+      console.log('🔍 Checking for existing studio occupancy for studio:', currentStudio?.id, 'in academic year:', nextAcademicYear);
+      
+      try {
+        // Check if studio is already occupied for this academic year
+        const { data: existingOccupancy, error: occupancyError } = await supabase
+          .from('studio_occupancy')
+          .select('*')
+          .eq('studio_id', currentStudio?.id)
+          .eq('academic_year', nextAcademicYear)
+          .single();
 
-      // Create invoice for the new academic year
-      const invoiceData = {
-        student_id: newStudent.id,
-        academic_year: nextAcademicYear,
-        amount: newStudentData.total_amount,
-        due_date: calculateCheckInDate(nextAcademicYear), // Due on check-in date
-        status: 'pending' as const,
-        description: `Accommodation fees for ${nextAcademicYear}`,
-        created_by: '423b2f89-ed35-4537-866e-d4fe702e577c' // Admin user ID
-      };
+        if (existingOccupancy && !occupancyError) {
+          console.log('⚠️ Studio already occupied for', nextAcademicYear, ':', existingOccupancy.id);
+          // Update existing occupancy
+          await supabase
+            .from('studio_occupancy')
+            .update({
+              student_id: student?.id,
+              status: 'occupied',
+              check_in_date: calculateCheckInDate(nextAcademicYear),
+              check_out_date: calculateCheckOutDate(nextAcademicYear)
+            })
+            .eq('id', existingOccupancy.id);
+          
+          console.log('✅ Updated existing studio occupancy:', existingOccupancy.id);
+        } else {
+          console.log('✅ No existing occupancy found, creating new one for', nextAcademicYear);
+          // Create new studio occupancy
+          await ApiService.createStudioOccupancy({
+            studio_id: currentStudio?.id, // Use current studio instead of selected studio
+            academic_year: nextAcademicYear,
+            student_id: student?.id, // Same student ID - no duplication!
+            status: 'occupied',
+            check_in_date: calculateCheckInDate(nextAcademicYear),
+            check_out_date: calculateCheckOutDate(nextAcademicYear)
+          });
+          console.log('✅ Created new studio occupancy');
+        }
+      } catch (error) {
+        console.error('💥 Error with studio occupancy:', error);
+        // Don't throw here - studio occupancy is not critical for rebooking success
+        console.log('⚠️ Continuing without studio occupancy update');
+      }
 
-      const invoice = await ApiService.createInvoice(invoiceData);
+      // Create financial records for the new booking
+      let financialRecords;
+      try {
+        financialRecords = await ApiService.createStudentFinancialRecordsDirect(
+          newBooking.id, // Use booking ID instead of student ID
+          {
+            depositAmount: rebookingData.depositAmount,
+            totalAmount: newBooking.total_amount || 0, // Use booking's total amount
+            installmentPlanId: rebookingData.installmentPlanId,
+            durationId: rebookingData.durationId,
+            createdBy: '423b2f89-ed35-4537-866e-d4fe702e577c', // Admin user ID
+            depositPaid: true,
+            academicYear: nextAcademicYear
+          }
+        );
+        console.log('✅ Financial records created successfully');
+      } catch (error) {
+        console.error('⚠️ Edge Function failed, creating basic invoice manually:', error);
+        // Fallback: Create a basic deposit invoice manually
+        const depositInvoice = await ApiService.createInvoice({
+          student_id: student?.id,
+          student_booking_id: newBooking.id,
+          invoice_number: `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`,
+          amount: rebookingData.depositAmount,
+          due_date: new Date().toISOString().split('T')[0],
+          status: 'paid',
+          invoice_type: 'deposit',
+          academic_year: nextAcademicYear,
+          created_by: '423b2f89-ed35-4537-866e-d4fe702e577c'
+        });
+        
+        financialRecords = {
+          depositInvoice,
+          installmentInvoices: []
+        };
+        console.log('✅ Fallback invoice created:', depositInvoice.id);
+      }
 
       // Create payment record for the deposit
       const paymentData = {
-        student_id: newStudent.id,
-        invoice_id: invoice.id,
+        invoice_id: financialRecords.depositInvoice.id,
         amount: rebookingData.depositAmount,
-        payment_method: 'card' as const,
-        payment_type: 'deposit' as const,
+        method: 'stripe' as const, // Use 'stripe' instead of 'card'
         stripe_payment_intent_id: paymentIntentId,
         status: 'completed' as const,
-        payment_date: new Date().toISOString().split('T')[0],
+        processed_at: new Date().toISOString(), // Use processed_at instead of payment_date
+        xero_export_status: 'pending' as const,
+        academic_year: nextAcademicYear,
         created_by: '423b2f89-ed35-4537-866e-d4fe702e577c' // Admin user ID
       };
 
       await ApiService.createPayment(paymentData);
-
-      // If installment plan is selected, create installment records
-      if (rebookingData.installmentPlanId) {
-        const plan = installmentPlans.find(p => p.id === rebookingData.installmentPlanId);
-        if (plan) {
-          const remainingAmount = newStudentData.total_amount - rebookingData.depositAmount;
-          const installmentAmount = remainingAmount / plan.installment_count;
-          
-          for (let i = 1; i <= plan.installment_count; i++) {
-            const installmentData = {
-              student_id: newStudent.id,
-              invoice_id: invoice.id,
-              installment_number: i,
-              amount: installmentAmount,
-              due_date: new Date(Date.now() + (i * 30 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0], // 30 days apart
-              status: 'pending' as const,
-              created_by: '423b2f89-ed35-4537-866e-d4fe702e577c' // Admin user ID
-            };
-            
-            await ApiService.createStudentInstallment(installmentData);
-          }
-        }
-      }
 
       toast({
         title: "Rebooking Successful!",
@@ -452,14 +569,30 @@ const StudentRebooking: React.FC<StudentRebookingProps> = ({ studentId }) => {
 
 
 
-  const updateDepositAmount = (installmentPlanId?: string) => {
+  const updateDepositAmount = async (installmentPlanId?: string) => {
     if (installmentPlanId && installmentPlanId !== 'none') {
-      const plan = installmentPlans.find(p => p.id === installmentPlanId);
-      setRebookingData(prev => ({
-        ...prev,
-        installmentPlanId,
-        depositAmount: plan?.deposit_amount || 99
-      }));
+      try {
+        // Try to get academic year specific deposit amount
+        const academicYearPlan = await ApiService.getInstallmentPlanForAcademicYear(installmentPlanId, nextAcademicYear);
+        const depositAmount = academicYearPlan?.deposit_amount || 99;
+        
+        setRebookingData(prev => ({
+          ...prev,
+          installmentPlanId,
+          depositAmount
+        }));
+        
+        // Updated deposit amount for academic year
+      } catch (error) {
+        // Error getting academic year specific deposit, using fallback
+        // Fallback to universal plan
+        const plan = installmentPlans.find(p => p.id === installmentPlanId);
+        setRebookingData(prev => ({
+          ...prev,
+          installmentPlanId,
+          depositAmount: plan?.deposit_amount || 99
+        }));
+      }
     } else {
       setRebookingData(prev => ({
         ...prev,
@@ -489,7 +622,7 @@ const StudentRebooking: React.FC<StudentRebookingProps> = ({ studentId }) => {
         <div className="mt-4 text-sm text-gray-500">
           <p>Requirements:</p>
           <ul className="list-disc list-inside mt-2 space-y-1">
-            <li>Must have an active studio assignment</li>
+            <li>Must have an active studio assignment for current academic year</li>
             <li>Must be in the current academic year</li>
             <li>Next academic year must be available</li>
           </ul>
@@ -519,7 +652,7 @@ const StudentRebooking: React.FC<StudentRebookingProps> = ({ studentId }) => {
               <Building className="h-4 w-4 text-gray-400" />
               <span className="text-sm text-gray-600">Studio:</span>
               <span className="font-medium">
-                {studios.find(s => s.id === student?.studio_id)?.studio_number || student?.studio_id || 'Not assigned'}
+                {currentStudio ? `Studio ${currentStudio.studio_number}` : 'No Studio Assigned'}
               </span>
             </div>
             <div className="flex items-center space-x-2">
@@ -543,30 +676,17 @@ const StudentRebooking: React.FC<StudentRebookingProps> = ({ studentId }) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Studio Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="studio">Studio Selection</Label>
-            <Select
-              value={rebookingData.studioId}
-              onValueChange={(value) => setRebookingData(prev => ({ ...prev, studioId: value }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select studio" />
-              </SelectTrigger>
-              <SelectContent>
-                {studios.map((studio) => (
-                  <SelectItem key={studio.id} value={studio.id}>
-                    <div className="flex items-center space-x-2">
-                      <Home className="h-4 w-4" />
-                      <span>Studio {studio.studio_number}</span>
-                      {studio.id === student?.studio_id && (
-                        <Badge variant="secondary" className="text-xs">Current</Badge>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Current Studio Info */}
+          <div className="p-4 bg-blue-50 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <Building className="h-5 w-5 text-blue-600" />
+              <div>
+                <h3 className="font-medium text-blue-900">Rebooking Current Studio</h3>
+                <p className="text-sm text-blue-700">
+                  You will automatically rebook {currentStudio ? `Studio ${currentStudio.studio_number}` : 'your current studio'} for {nextAcademicYear}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Duration Selection */}
@@ -634,7 +754,7 @@ const StudentRebooking: React.FC<StudentRebookingProps> = ({ studentId }) => {
           {/* Rebooking Button */}
           <Button
             onClick={handleRebookingSubmit}
-            disabled={!rebookingData.studioId || !rebookingData.durationId || isRebooking}
+            disabled={!currentStudio || !rebookingData.durationId || isRebooking}
             className="w-full"
           >
             {isRebooking ? (

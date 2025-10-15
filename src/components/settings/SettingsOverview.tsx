@@ -13,7 +13,9 @@ import {
   AlertTriangle,
   Clock,
   Palette,
-  Globe
+  Globe,
+  Calendar,
+  Sparkles
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CardSkeleton, DashboardGridSkeleton } from '@/components/ui/skeleton';
@@ -71,6 +73,14 @@ const SettingsOverview = () => {
       path: '/data/system-settings',
       color: 'bg-indigo-500',
       stats: { uptime: '99.9%', healthy: true }
+    },
+    {
+      title: 'Academic Year Setup',
+      description: 'Set up new academic years with room grades, pricing, and installment plans',
+      icon: Calendar,
+      path: '/settings/academic-year-setup',
+      color: 'bg-purple-500',
+      stats: { setup: 'Wizard', new: true }
     }
   ];
 

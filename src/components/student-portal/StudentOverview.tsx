@@ -7,7 +7,7 @@ import { ApiService, StudentWithUser, Reservation, Invoice } from '@/services/ap
 import { useAcademicYear } from '@/contexts/AcademicYearContext';
 import PaymentEventService, { InvoiceCreationEvent } from '@/services/paymentEventService';
 import { useToast } from '@/hooks/use-toast';
-import { DollarSign, Clock, Building, Calendar, FileText, Eye, Loader2 } from 'lucide-react';
+import { DollarSign, Clock, Building, Calendar, FileText, Eye, Loader2, History } from 'lucide-react';
 
 interface StudentOverviewProps {
   studentId: string;
@@ -19,8 +19,9 @@ const StudentOverview = ({ studentId }: StudentOverviewProps) => {
   const [reservation, setReservation] = useState<Reservation | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [studentAcademicYears, setStudentAcademicYears] = useState<string[]>([]);
 
-  const { selectedAcademicYear } = useAcademicYear();
+  const { selectedAcademicYear, setSelectedAcademicYear } = useAcademicYear();
 
   useEffect(() => {
     fetchStudentData();
@@ -69,12 +70,27 @@ const StudentOverview = ({ studentId }: StudentOverviewProps) => {
       const studentData = await ApiService.getStudentByIdWithDetails(studentId);
       setStudent(studentData);
       
-      // Get reservation data (may be null for direct bookings)
+      // Get current student booking for the selected academic year
       try {
-        const reservationData = await ApiService.getReservationByStudentId(studentId, selectedAcademicYear);
-        setReservation(reservationData);
+        const currentBooking = await ApiService.getCurrentStudentBooking(studentData?.user_id || '', selectedAcademicYear);
+        if (currentBooking) {
+          // Convert booking to reservation format for compatibility
+          setReservation({
+            id: currentBooking.id,
+            student_id: currentBooking.student_id,
+            studio_id: currentBooking.studio_id,
+            academic_year: currentBooking.academic_year,
+            check_in_date: currentBooking.check_in_date,
+            check_out_date: currentBooking.check_out_date,
+            total_amount: currentBooking.total_amount,
+            status: currentBooking.status,
+            type: 'student'
+          });
+        } else {
+          setReservation(null);
+        }
       } catch (error) {
-        console.log('No reservation found for student (direct booking)');
+        console.log('No booking found for student in this academic year');
         setReservation(null);
       }
       
@@ -85,6 +101,22 @@ const StudentOverview = ({ studentId }: StudentOverviewProps) => {
       } catch (error) {
         console.log('No invoices found for student');
         setInvoices([]);
+      }
+      
+      // Get student's academic year history
+      if (studentData?.user_id) {
+        try {
+          const academicYears = await ApiService.getStudentAcademicYears(studentData.user_id);
+          setStudentAcademicYears(academicYears);
+          
+          // If current context year doesn't have this student, switch to their current year
+          if (!academicYears.includes(selectedAcademicYear) && academicYears.length > 0) {
+            setSelectedAcademicYear(academicYears[0]); // Switch to student's current year
+          }
+        } catch (error) {
+          console.log('No academic year history found for student');
+          setStudentAcademicYears([]);
+        }
       }
       
     } catch (error) {
@@ -202,6 +234,35 @@ const StudentOverview = ({ studentId }: StudentOverviewProps) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Academic Year History */}
+      {studentAcademicYears.length > 1 && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Academic Year History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {studentAcademicYears.map(year => (
+                <Badge 
+                  key={year}
+                  variant={year === selectedAcademicYear ? 'default' : 'outline'}
+                  className="cursor-pointer hover:bg-primary/10 transition-colors"
+                  onClick={() => setSelectedAcademicYear(year)}
+                >
+                  {year}
+                </Badge>
+              ))}
+            </div>
+            <p className="text-sm text-gray-600 mt-2">
+              Click on a year to view student's information for that academic year.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Invoices Breakdown */}
       <Card>

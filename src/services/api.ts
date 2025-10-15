@@ -392,6 +392,46 @@ export interface InstallmentPlan {
   created_at: string;
 }
 
+// Academic Year Template Interfaces
+export interface AcademicYearInstallmentPlan {
+  id: string;
+  installment_plan_id: string;
+  academic_year: string;
+  due_dates: string[];
+  deposit_amount: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  // Related data
+  installment_plan?: InstallmentPlan;
+}
+
+export interface AcademicYearRoomGrade {
+  id: string;
+  room_grade_id: string;
+  academic_year: string;
+  weekly_rate: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  // Related data
+  room_grade?: RoomGrade;
+}
+
+export interface AcademicYearPricingMatrix {
+  id: string;
+  room_grade_id: string;
+  duration_id: string;
+  academic_year: string;
+  weekly_rate_override?: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  // Related data
+  room_grade?: RoomGrade;
+  duration?: Duration;
+}
+
 export interface ReservationInstallment {
   id: string;
   reservation_id: string;
@@ -443,7 +483,6 @@ export interface Student {
   town?: string;
   
   // Academic Information (from UI)
-  academic_year?: string; // '2025/2026', '2026/2027'
   year_of_study?: string; // '1st', '2nd', '3rd', '4+'
   field_of_study?: string;
   
@@ -452,22 +491,6 @@ export interface Student {
   guarantor_email?: string;
   guarantor_phone?: string;
   guarantor_relationship?: string;
-  
-  // Payment Preferences (from UI)
-  wants_installments?: boolean;
-  installment_plan_id?: string;
-  deposit_paid?: boolean;
-  
-  // Studio Assignment
-  studio_id?: string;
-  
-  // Booking Information
-  check_in_date?: string;
-  duration_name?: string;
-  duration_type?: string;
-  
-  // Financial Information
-  total_amount?: number; // Calculated total revenue (Weekly Rate × Weeks)
   
   // File Upload References
   passport_file_url?: string;
@@ -486,6 +509,29 @@ export interface Student {
   
   created_at: string;
   updated_at: string;
+}
+
+export interface StudentBooking {
+  id: string;
+  student_id: string;
+  academic_year: string; // '2025/2026', '2026/2027'
+  studio_id?: string;
+  duration_id?: string;
+  check_in_date?: string;
+  check_out_date?: string;
+  total_amount?: number;
+  weekly_rate?: number;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  deposit_paid: boolean;
+  wants_installments: boolean;
+  installment_plan_id?: string;
+  created_at: string;
+  updated_at: string;
+  
+  // Related data (when joined)
+  student?: Student;
+  studio?: any;
+  duration?: any;
 }
 
 export interface StudentDocument {
@@ -583,6 +629,7 @@ export interface RebookingRecord {
   id: string;
   original_student_id: string;
   new_student_id?: string;
+  student_booking_id?: string; // New field for student booking reference
   current_academic_year: string;
   new_academic_year: string;
   studio_id: string;
@@ -597,6 +644,7 @@ export interface RebookingRecord {
   // Related data
   original_student?: Student;
   new_student?: Student;
+  student_booking?: StudentBooking; // New related data
   studio?: Studio;
   duration?: Duration;
   installment_plan?: InstallmentPlan;
@@ -2883,6 +2931,7 @@ export class ApiService {
         *,
         original_student:students!original_student_id(*),
         new_student:students!new_student_id(*),
+        student_booking:student_bookings!student_booking_id(*),
         studio:studios!studio_id(*),
         duration:durations!duration_id(*),
         installment_plan:installment_plans!installment_plan_id(*)
@@ -2902,6 +2951,7 @@ export class ApiService {
         *,
         original_student:students!original_student_id(*),
         new_student:students!new_student_id(*),
+        student_booking:student_bookings!student_booking_id(*),
         studio:studios!studio_id(*),
         duration:durations!duration_id(*),
         installment_plan:installment_plans!installment_plan_id(*)
@@ -6588,6 +6638,147 @@ export class ApiService {
     return data;
   }
 
+  // ===== STUDENT BOOKINGS API METHODS =====
+  
+  static async getStudentBookings(userId: string): Promise<StudentBooking[]> {
+    const { data, error } = await supabase
+      .from('student_bookings')
+      .select(`
+        *,
+        student:students(*),
+        studio:studios(*),
+        duration:durations(*)
+      `)
+      .eq('student.user_id', userId)
+      .order('academic_year', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  static async getCurrentStudentBooking(userId: string, academicYear: string): Promise<StudentBooking | null> {
+    const { data, error } = await supabase
+      .from('student_bookings')
+      .select(`
+        *,
+        student:students(*),
+        studio:studios(*),
+        duration:durations(*)
+      `)
+      .eq('student.user_id', userId)
+      .eq('academic_year', academicYear)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data;
+  }
+
+  static async getStudentBookingById(bookingId: string): Promise<StudentBooking | null> {
+    const { data, error } = await supabase
+      .from('student_bookings')
+      .select(`
+        *,
+        student:students(*),
+        studio:studios(*),
+        duration:durations(*)
+      `)
+      .eq('id', bookingId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data;
+  }
+
+  static async getStudentBookingByStudentId(studentId: string, academicYear: string): Promise<StudentBooking | null> {
+    const { data, error } = await supabase
+      .from('student_bookings')
+      .select(`
+        *,
+        student:students(*),
+        studio:studios(*),
+        duration:durations(*)
+      `)
+      .eq('student_id', studentId)
+      .eq('academic_year', academicYear)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data;
+  }
+
+  static async createStudentBooking(bookingData: Omit<StudentBooking, 'id' | 'created_at' | 'updated_at'>): Promise<StudentBooking> {
+    const { data, error } = await supabase
+      .from('student_bookings')
+      .insert(bookingData)
+      .select(`
+        *,
+        student:students(*),
+        studio:studios(*),
+        duration:durations(*)
+      `)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async updateStudentBooking(bookingId: string, updates: Partial<StudentBooking>): Promise<StudentBooking> {
+    const { data, error } = await supabase
+      .from('student_bookings')
+      .update(updates)
+      .eq('id', bookingId)
+      .select(`
+        *,
+        student:students(*),
+        studio:studios(*),
+        duration:durations(*)
+      `)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  static async getStudentAcademicYears(userId: string): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('student_bookings')
+      .select('academic_year')
+      .eq('student.user_id', userId)
+      .order('academic_year', { ascending: false });
+
+    if (error) throw error;
+    return data?.map(record => record.academic_year) || [];
+  }
+
+  static async getStudentByAcademicYear(userId: string, academicYear: string): Promise<StudentBooking | null> {
+    const { data, error } = await supabase
+      .from('student_bookings')
+      .select(`
+        *,
+        student:students(*),
+        studio:studios(*),
+        duration:durations(*)
+      `)
+      .eq('student.user_id', userId)
+      .eq('academic_year', academicYear)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
+    return data;
+  }
+
   // Bulk Email Sending
   static async sendBulkEmail(campaignId: string, studentIds: string[]): Promise<any> {
     // This would integrate with your email service
@@ -6837,6 +7028,148 @@ export class ApiService {
         revenueByMonth: [],
         occupancyRate: 0
       };
+    }
+  }
+
+  // Academic Year Template Methods
+  static async getAcademicYearInstallmentPlans(academicYear?: string): Promise<AcademicYearInstallmentPlan[]> {
+    try {
+      let query = supabase
+        .from('academic_year_installment_plans')
+        .select(`
+          *,
+          installment_plan:installment_plans(*)
+        `)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (academicYear && academicYear !== 'all') {
+        query = query.eq('academic_year', academicYear);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching academic year installment plans:', error);
+      throw error;
+    }
+  }
+
+  static async getAcademicYearRoomGrades(academicYear?: string): Promise<AcademicYearRoomGrade[]> {
+    try {
+      let query = supabase
+        .from('academic_year_room_grades')
+        .select(`
+          *,
+          room_grade:room_grades(*)
+        `)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (academicYear && academicYear !== 'all') {
+        query = query.eq('academic_year', academicYear);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching academic year room grades:', error);
+      throw error;
+    }
+  }
+
+  static async getAcademicYearPricingMatrix(academicYear?: string): Promise<AcademicYearPricingMatrix[]> {
+    try {
+      let query = supabase
+        .from('academic_year_pricing_matrix')
+        .select(`
+          *,
+          room_grade:room_grades(*),
+          duration:durations(*)
+        `)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (academicYear && academicYear !== 'all') {
+        query = query.eq('academic_year', academicYear);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching academic year pricing matrix:', error);
+      throw error;
+    }
+  }
+
+  // Helper method to get installment plan for specific academic year
+  static async getInstallmentPlanForAcademicYear(planId: string, academicYear: string): Promise<AcademicYearInstallmentPlan | null> {
+    try {
+      const { data, error } = await supabase
+        .from('academic_year_installment_plans')
+        .select(`
+          *,
+          installment_plan:installment_plans(*)
+        `)
+        .eq('installment_plan_id', planId)
+        .eq('academic_year', academicYear)
+        .eq('is_active', true)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data || null;
+    } catch (error) {
+      console.error('Error fetching installment plan for academic year:', error);
+      return null;
+    }
+  }
+
+  // Helper method to get room grade pricing for specific academic year
+  static async getRoomGradePricingForAcademicYear(roomGradeId: string, academicYear: string): Promise<AcademicYearRoomGrade | null> {
+    try {
+      const { data, error } = await supabase
+        .from('academic_year_room_grades')
+        .select(`
+          *,
+          room_grade:room_grades(*)
+        `)
+        .eq('room_grade_id', roomGradeId)
+        .eq('academic_year', academicYear)
+        .eq('is_active', true)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data || null;
+    } catch (error) {
+      console.error('Error fetching room grade pricing for academic year:', error);
+      return null;
+    }
+  }
+
+  // Helper method to get pricing matrix override for specific academic year
+  static async getPricingMatrixOverrideForAcademicYear(roomGradeId: string, durationId: string, academicYear: string): Promise<AcademicYearPricingMatrix | null> {
+    try {
+      const { data, error } = await supabase
+        .from('academic_year_pricing_matrix')
+        .select(`
+          *,
+          room_grade:room_grades(*),
+          duration:durations(*)
+        `)
+        .eq('room_grade_id', roomGradeId)
+        .eq('duration_id', durationId)
+        .eq('academic_year', academicYear)
+        .eq('is_active', true)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data || null;
+    } catch (error) {
+      console.error('Error fetching pricing matrix override for academic year:', error);
+      return null;
     }
   }
 

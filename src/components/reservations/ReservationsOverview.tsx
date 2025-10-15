@@ -197,7 +197,7 @@ export default function ReservationsOverview() {
               )}
             </p>
           </div>
-          <Button disabled>
+          <Button onClick={() => navigate('/ota-bookings/tourists/new')}>
             <Plus className="mr-2 h-4 w-4" />
             New Reservation
           </Button>
@@ -237,7 +237,7 @@ export default function ReservationsOverview() {
             )}
           </p>
         </div>
-        <Button>
+        <Button onClick={() => navigate('/ota-bookings/tourists/new')}>
           <Plus className="mr-2 h-4 w-4" />
           New Reservation
         </Button>

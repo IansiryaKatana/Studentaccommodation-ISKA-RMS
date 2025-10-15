@@ -303,7 +303,7 @@ const StudentMaintenance = ({ studentId }: StudentMaintenanceProps) => {
         <CardHeader>
           <CardTitle className="flex items-center">
             <Wrench className="h-5 w-5 mr-2" />
-            Your Maintenance Requests
+            Request History
           </CardTitle>
         </CardHeader>
         <CardContent>
